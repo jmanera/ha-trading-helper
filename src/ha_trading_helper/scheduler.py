@@ -37,6 +37,7 @@ class Runner:
         self.signal_log = SignalLog(settings.data_dir)
         self.publisher = MqttPublisher(settings)
         self._published_pairs: set[str] = set()
+        self._swept_retained = False
         self._lock = asyncio.Lock()
 
     async def cycle(self) -> None:
@@ -58,8 +59,14 @@ class Runner:
                 wait_threshold=s.wait_threshold,
             )
             try:
+                if not self._swept_retained:
+                    # Once per run: drop entities left on the broker by earlier runs.
+                    keep = {payloads.slug(p) for p in [*pairs, *gone]}
+                    orphans = sorted(await self.publisher.retained_pairs() - keep)
+                    messages += payloads.removal_messages(orphans, s.base_topic, s.discovery_prefix)
                 await self.publisher.send(messages)
                 self._published_pairs = set(pairs)
+                self._swept_retained = True
             except Exception:
                 log.exception("publish_failed")
             changed = self.signal_log.record(result.signals)

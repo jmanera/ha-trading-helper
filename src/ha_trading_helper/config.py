@@ -10,9 +10,9 @@ from __future__ import annotations
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -20,6 +20,9 @@ from pydantic_settings import (
 )
 
 HA_OPTIONS_FILE = Path("/data/options.json")
+
+# Quote currencies with enough OKX spot liquidity to build a universe.
+QuoteCurrency = Literal["USDC", "USDT", "EUR"]
 
 
 class Weights(BaseModel):
@@ -54,11 +57,11 @@ class Settings(BaseSettings):
 
     # Universe
     pairs: list[str] = Field(default_factory=list, description="Empty = automatic universe")
-    quote_currencies: list[str] = Field(default_factory=lambda: ["USDT"])
+    quote_currency: QuoteCurrency = "USDC"
     max_pairs: int = 20
-    min_volume_24h_usdt: float = 5_000_000.0
+    min_volume_24h_usdt: float = 5_000_000.0  # USD equivalent, whatever the quote
     max_spread_pct: float = 0.2
-    benchmark: str = "BTC-USDT"
+    benchmark: str = Field(default="", description="Empty = BTC in the quote currency")
 
     # Strategy
     bar: str = "4H"
@@ -94,6 +97,12 @@ class Settings(BaseSettings):
     # Scheduler
     run_delay_seconds: int = 60
     log_level: str = "INFO"
+
+    @model_validator(mode="after")
+    def _default_benchmark(self) -> Settings:
+        if not self.benchmark:
+            self.benchmark = f"BTC-{self.quote_currency}"
+        return self
 
     @classmethod
     def settings_customise_sources(

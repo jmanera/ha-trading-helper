@@ -25,9 +25,10 @@ asesoramiento financiero.
 
 | Opción | Por defecto | Descripción |
 |---|---|---|
+| `quote_currency` | USDC | Moneda de cotización: USDC, USDT o EUR. BTC en esa moneda es la referencia de mercado |
 | `pairs` | `[]` | Lista fija de pares; vacío = universo automático |
 | `max_pairs` | 20 | Tamaño del universo automático |
-| `min_volume_24h_usdt` | 5 000 000 | Filtro de liquidez |
+| `min_volume_24h_usdt` | 5 000 000 | Filtro de liquidez, en USD equivalentes. En USDC y EUR hay menos pares líquidos que en USDT: baja este valor si salen pocos |
 | `enter_threshold` | 70 | Puntuación mínima para ENTRAR |
 | `wait_threshold` | 40 | Por encima, una moneda en ESPERAR se marca para vigilar |
 | `require_validation` | true | ENTRAR solo es alerta si la estrategia está validada |
@@ -41,12 +42,12 @@ Ejemplo de posición:
 
 ```yaml
 positions:
-  - pair: SOL-USDT
+  - pair: SOL-USDC
     entry_price: 180.5
     entry_time: "2026-11-01T12:00:00Z"
 ```
 
 ## Datos
 
-En `/data` de la app: caché de velas (Parquet), `validation.json` (último walk-forward) y
+En `/data` de la app: caché de velas (Parquet), `validation-<moneda>.json` (último walk-forward, uno por moneda de cotización) y
 `signals.jsonl` (cada cambio de acción, para comparar en vivo contra el backtest).

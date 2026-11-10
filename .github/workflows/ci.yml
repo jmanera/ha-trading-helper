@@ -74,4 +74,4 @@ jobs:
           name: weekly-backtest
           path: |
             validation.txt
-            .data/validation.json
+            .data/validation-*.json

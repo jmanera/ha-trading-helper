@@ -10,7 +10,7 @@ señal.
 > los resultados pasados no garantizan los futuros.
 
 ```text
-SOL-USDT · ENTRAR · puntuación 85/100 · vela 2026-11-10 16:00 UTC
+SOL-USDC · ENTRAR · puntuación 85/100 · vela 2026-11-10 16:00 UTC
 Motivos:
   +25  Tendencia: alcista, cierre 188,4 > EMA50 181,2 > EMA200 160,7
   +20  MACD: histograma pasa de -0,31 a 0,12
@@ -25,8 +25,9 @@ Validación: Fuera de muestra: 34 % aciertos, esperanza +0,04R tras costes (n=35
 
 ## Cómo funciona
 
-1. **Universo**: pares `-USDT` de OKX con volumen 24 h ≥ 5 M USDT y spread ≤ 0,2 %, sin
-   stablecoins ni acciones tokenizadas (o una lista fija de pares).
+1. **Universo**: pares de OKX en la moneda de cotización elegida (USDC por defecto; también
+   USDT o EUR) con volumen 24 h ≥ 5 M USD y spread ≤ 0,2 %, sin stablecoins ni acciones
+   tokenizadas (o una lista fija de pares). BTC en esa moneda es la referencia de mercado.
 2. **Datos**: velas de 4 h de los endpoints públicos de OKX v5, solo velas cerradas
    (`confirm=1`), caché incremental en Parquet.
 3. **Puntuación 0-100** sumando evidencias (pesos configurables):
@@ -75,8 +76,8 @@ stack completo.
 uv sync                                   # dependencias
 make check                                # lint + tipos + tests + auditoría
 uv run ha-trading-helper scan             # ranking con motivos (sin Home Assistant)
-uv run ha-trading-helper backtest --pair SOL-USDT --years 2 --trades
-uv run ha-trading-helper validate --years 2   # walk-forward -> .data/validation.json
+uv run ha-trading-helper backtest --pair SOL-USDC --years 2 --trades
+uv run ha-trading-helper validate --years 2   # walk-forward -> .data/validation-usdc.json
 ```
 
 Stack completo (Mosquitto + Home Assistant + la app):

@@ -40,7 +40,8 @@ class ScanResult:
 
 
 def validation_path(settings: Settings) -> Path:
-    return settings.data_dir / "validation.json"
+    """One report per quote currency: the universe, and so the validation, depends on it."""
+    return settings.data_dir / f"validation-{settings.quote_currency.lower()}.json"
 
 
 async def resolve_universe(settings: Settings, client: OkxClient) -> list[str]:
@@ -48,7 +49,7 @@ async def resolve_universe(settings: Settings, client: OkxClient) -> list[str]:
         return list(dict.fromkeys(p.upper() for p in settings.pairs))
     tickers = await client.tickers("SPOT")
     rules = UniverseRules(
-        quotes=tuple(settings.quote_currencies),
+        quotes=(settings.quote_currency,),
         min_volume_24h_usdt=settings.min_volume_24h_usdt,
         max_spread_pct=settings.max_spread_pct,
         max_pairs=settings.max_pairs,

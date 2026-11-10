@@ -32,6 +32,10 @@ class Message:
     retain: bool = True
 
 
+# Object id suffixes of the per-pair entities (see discovery_messages).
+ENTITY_SUFFIXES = ("_puntuacion", "_entrada")
+
+
 def slug(pair: str) -> str:
     return pair.lower().replace("-", "_")
 
