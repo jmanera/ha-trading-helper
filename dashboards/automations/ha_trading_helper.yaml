@@ -1,5 +1,6 @@
 # Example: notify when any pair changes to ENTRAR or SALIR.
 # Replace notify.notify with your phone, e.g. notify.mobile_app_<device>.
+# Run it by hand (Run actions) to get the current best opportunity as a test message.
 - id: ha_trading_helper_cambio_senal
   alias: "Señales cripto: aviso de ENTRAR / SALIR"
   mode: queued
@@ -16,11 +17,15 @@
                 or trigger.event.data.old_state.attributes.accion
                    != trigger.event.data.new_state.attributes.accion) }}
   actions:
+    # Run by hand there is no event: send the best opportunity as a test.
     - variables:
-        a: "{{ trigger.event.data.new_state.attributes }}"
+        prueba: "{{ trigger.event is not defined }}"
+        a: >-
+          {{ states.sensor.ha_trading_helper_mejor_oportunidad.attributes if prueba
+             else trigger.event.data.new_state.attributes }}
     - action: notify.notify
       data:
-        title: "{{ a.par }}: {{ a.accion }} ({{ a.puntuacion }}/100)"
+        title: "{{ '[Prueba] ' if prueba }}{{ a.par }}: {{ a.accion }} ({{ a.puntuacion }}/100)"
         message: >-
           {% if a.accion == 'SALIR' %}{{ a.salida }}{% else %}
           {%- for m in (a.motivos | selectattr('p', 'gt', 0) | sort(attribute='p', reverse=true))[:3] -%}
