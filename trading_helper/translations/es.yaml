@@ -38,6 +38,25 @@ configuration:
   positions:
     name: Posiciones abiertas
     description: Para avisar de SALIR. entry_time en ISO 8601, p. ej. 2026-11-10T12:00:00Z.
+  trading_enabled:
+    name: Operar desde Telegram
+    description: Permite comprar y vender desde los avisos de Telegram, siempre con confirmación. Desactivado, solo hay avisos.
+  okx_demo:
+    name: Modo demo de OKX
+    description: Opera con dinero ficticio (Demo trading). Necesita claves API creadas en modo demo. Desactívalo solo para operar con dinero real.
+  okx_api_key:
+    name: OKX API key
+    description: Clave con permiso solo de Trade (nunca Withdraw), vinculada a la IP de tu casa.
+  okx_api_secret:
+    name: OKX secret key
+  okx_passphrase:
+    name: OKX passphrase
+  max_order_amount:
+    name: Importe máximo por orden
+    description: En la moneda de cotización. Las compras por encima se rechazan.
+  stop_loss_on_exchange:
+    name: Stop en OKX
+    description: Tras cada compra deja en OKX un stop-loss al nivel de la señal (2×ATR), que protege aunque Home Assistant esté caído.
   log_level:
     name: Nivel de log
   mqtt_host:

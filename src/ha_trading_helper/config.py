@@ -81,6 +81,15 @@ class Settings(BaseSettings):
     stop_atr_mult: float = 2.0
     trailing_atr_mult: float = 2.5
 
+    # Trading from Telegram (off by default; demo trading until switched off)
+    trading_enabled: bool = False
+    okx_demo: bool = True
+    okx_api_key: str | None = None
+    okx_api_secret: str | None = None
+    okx_passphrase: str | None = None
+    max_order_amount: float = 500.0  # in the quote currency
+    stop_loss_on_exchange: bool = True
+
     # Costs (verify against the OKX fee page for your tier)
     fee_pct: float = 0.10
     slippage_pct: float = 0.05
@@ -99,6 +108,12 @@ class Settings(BaseSettings):
     # Scheduler
     run_delay_seconds: int = 60
     log_level: str = "INFO"
+
+    @property
+    def trading_ready(self) -> bool:
+        return self.trading_enabled and all(
+            (self.okx_api_key, self.okx_api_secret, self.okx_passphrase)
+        )
 
     @model_validator(mode="after")
     def _default_benchmark(self) -> Settings:

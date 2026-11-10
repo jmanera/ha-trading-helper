@@ -5,7 +5,9 @@ defecto) puntúa los pares spot más líquidos de OKX con indicadores técnicos 
 resultado en Home Assistant por MQTT Discovery y explica punto a punto en qué se basa cada
 señal.
 
-> **Solo genera alertas. Nunca ejecuta órdenes ni necesita claves de OKX.**
+> **Por defecto solo genera alertas y no necesita claves de OKX.** Opcionalmente puede comprar
+> y vender desde los avisos de Telegram, siempre con tu confirmación (ver
+> [Operar desde Telegram](#operar-desde-telegram)).
 > No es asesoramiento financiero: las criptomonedas pueden perder gran parte de su valor y
 > los resultados pasados no garantizan los futuros.
 
@@ -67,6 +69,23 @@ Todas bajo el dispositivo **HA Trading Helper**:
 El panel **Señales cripto** ([dashboards/ha_trading_helper.yaml](dashboards/ha_trading_helper.yaml))
 usa solo tarjetas estándar, y hay una automatización de ejemplo que avisa al móvil cuando un
 par pasa a ENTRAR o SALIR ([dashboards/automations/](dashboards/automations/)).
+
+## Operar desde Telegram
+
+Opcional y desactivado por defecto (`trading_enabled: false`). Con la integración de
+Telegram en Home Assistant y las automatizaciones de
+[dashboards/automations/ha_trading_helper_telegram.yaml](dashboards/automations/ha_trading_helper_telegram.yaml):
+
+1. El aviso de **ENTRAR** trae un botón **Comprar**: el bot pregunta el importe, lo escribes
+   (p. ej. `150`) y pide **Confirmar** antes de enviar una orden a mercado.
+2. Tras comprar deja en OKX un **stop-loss** al nivel de la señal (2×ATR), que protege aunque
+   Home Assistant esté caído, y registra la posición para que el aviso de **SALIR** funcione.
+3. El aviso de **SALIR** trae un botón **Vender** (también con confirmación). `/posiciones`
+   lista lo abierto.
+
+Requisitos de OKX: una clave API con permiso **solo de Trade** (nunca *Withdraw*), vinculada a
+la IP de tu casa; empieza con claves de **Demo trading** (`okx_demo: true`, dinero ficticio).
+Hay un importe máximo por orden (`max_order_amount`). Diseño: [ADR 0002](docs/adr/0002-trading-from-telegram.md).
 
 ## Uso en local
 
