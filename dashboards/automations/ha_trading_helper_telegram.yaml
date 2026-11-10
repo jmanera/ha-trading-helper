@@ -1,0 +1,121 @@
+# Telegram version of the signal notice, with Comprar / Vender buttons, plus the bridge
+# that lets the app hold the buy/sell conversation. Use it INSTEAD of
+# ha_trading_helper.yaml (same id). Needs the Telegram bot integration and, to trade,
+# trading_enabled and the OKX keys in the app options.
+#
+# With several bots, add config_entry_id: <your bot entry> to every telegram_bot action.
+#
+# Flow: button press / text -> MQTT ha_trading_helper/telegram/in -> app
+#       app reply -> MQTT ha_trading_helper/telegram/out -> telegram_bot.send_message
+
+- id: ha_trading_helper_cambio_senal
+  alias: "Señales cripto: aviso de ENTRAR / SALIR"
+  description: Avisa por Telegram cuando un par pasa a ENTRAR o SALIR, con botón para operar.
+  mode: queued
+  triggers:
+    - trigger: event
+      event_type: state_changed
+  conditions:
+    - condition: template
+      value_template: >-
+        {{ trigger.event.data.entity_id is match('sensor\.ha_trading_helper_.*_puntuacion$')
+           and trigger.event.data.new_state is not none
+           and trigger.event.data.new_state.attributes.accion in ['ENTRAR', 'SALIR']
+           and (trigger.event.data.old_state is none
+                or trigger.event.data.old_state.attributes.accion
+                   != trigger.event.data.new_state.attributes.accion) }}
+  actions:
+    # Run by hand there is no event: send the best opportunity as a test.
+    - variables:
+        prueba: "{{ trigger.event is not defined }}"
+        a: >-
+          {{ states.sensor.ha_trading_helper_mejor_oportunidad.attributes if prueba
+             else trigger.event.data.new_state.attributes }}
+        titulo: "{{ '[Prueba] ' if prueba }}{{ a.par }}: {{ a.accion }} ({{ a.puntuacion }}/100)"
+        texto: >-
+          {% if a.accion == 'SALIR' %}{{ a.salida }}{% else %}
+          {%- for m in (a.motivos | selectattr('p', 'gt', 0) | sort(attribute='p', reverse=true))[:3] -%}
+          +{{ m.p }} {{ m.e }}: {{ m.d }}{{ '\n' }}
+          {%- endfor -%}
+          {{ a.resumen_niveles | default('') }}{% endif %}
+          {{ '' if a.alerta else '\n(informativa: estrategia sin validar)' }}
+        boton: >-
+          {% if a.accion == 'SALIR' %}Vender:/hth sell {{ a.par }}
+          {%- elif a.accion == 'ENTRAR' or prueba %}Comprar:/hth buy {{ a.par }}{% endif %}
+    - if: "{{ boton | length > 0 }}"
+      then:
+        - action: telegram_bot.send_message
+          data:
+            parse_mode: plain_text
+            title: "{{ titulo }}"
+            message: "{{ texto }}"
+            inline_keyboard: ["{{ boton }}"]
+      else:
+        - action: telegram_bot.send_message
+          data:
+            parse_mode: plain_text
+            title: "{{ titulo }}"
+            message: "{{ texto }}"
+
+- id: ha_trading_helper_telegram_boton
+  alias: "Señales cripto: botón de Telegram"
+  description: Reenvía a la app los botones Comprar / Vender / Confirmar / Cancelar.
+  mode: queued
+  triggers:
+    - trigger: event
+      event_type: telegram_callback
+  conditions:
+    - condition: template
+      value_template: "{{ (trigger.event.data.data | string).startswith('/hth ') }}"
+  actions:
+    - action: telegram_bot.answer_callback_query
+      data:
+        callback_query_id: "{{ trigger.event.data.id }}"
+        message: Recibido
+    - action: mqtt.publish
+      data:
+        topic: ha_trading_helper/telegram/in
+        payload: "{{ {'type': 'callback', 'data': trigger.event.data.data} | to_json }}"
+
+- id: ha_trading_helper_telegram_texto
+  alias: "Señales cripto: mensaje de Telegram"
+  description: Reenvía a la app lo que escribes (importes) y el comando /posiciones.
+  mode: queued
+  triggers:
+    - trigger: event
+      event_type: telegram_text
+    - trigger: event
+      event_type: telegram_command
+      event_data:
+        command: /posiciones
+  actions:
+    - action: mqtt.publish
+      data:
+        topic: ha_trading_helper/telegram/in
+        payload: >-
+          {{ {'type': 'text',
+              'text': trigger.event.data.text if trigger.event.event_type == 'telegram_text'
+                      else trigger.event.data.command} | to_json }}
+
+- id: ha_trading_helper_telegram_respuesta
+  alias: "Señales cripto: respuesta de la app"
+  description: Envía por Telegram las respuestas de la app (confirmaciones y resultados).
+  mode: queued
+  triggers:
+    - trigger: mqtt
+      topic: ha_trading_helper/telegram/out
+  actions:
+    - variables:
+        r: "{{ trigger.payload_json }}"
+    - if: "{{ r.keyboard | default([]) | length > 0 }}"
+      then:
+        - action: telegram_bot.send_message
+          data:
+            parse_mode: plain_text
+            message: "{{ r.text }}"
+            inline_keyboard: "{{ r.keyboard }}"
+      else:
+        - action: telegram_bot.send_message
+          data:
+            parse_mode: plain_text
+            message: "{{ r.text }}"

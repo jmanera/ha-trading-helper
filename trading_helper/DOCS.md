@@ -37,7 +37,12 @@ asesoramiento financiero.
 | `risk_per_trade_pct` | 1 | Riesgo por operación |
 | `max_positions` | 3 | Posiciones simultáneas |
 | `fee_pct` / `slippage_pct` | 0,10 / 0,05 | Costes por lado (verifica tu nivel de comisiones en OKX) |
-| `positions` | `[]` | Posiciones abiertas para avisar de SALIR |
+| `positions` | `[]` | Posiciones abiertas fuera de Telegram, para avisar de SALIR |
+| `trading_enabled` | false | Permite comprar y vender desde Telegram, siempre con confirmación |
+| `okx_demo` | true | Opera en Demo trading de OKX (dinero ficticio). Necesita claves creadas en modo demo |
+| `okx_api_key` / `okx_api_secret` / `okx_passphrase` | | Clave API de OKX con permiso solo de Trade |
+| `max_order_amount` | 500 | Importe máximo por compra, en la moneda de cotización |
+| `stop_loss_on_exchange` | true | Deja en OKX un stop-loss al nivel de la señal tras cada compra |
 
 Ejemplo de posición:
 
@@ -48,7 +53,20 @@ positions:
     entry_time: "2026-11-01T12:00:00Z"
 ```
 
+## Operar desde Telegram
+
+1. Crea en OKX una clave API con permiso **solo de Trade** (nunca *Withdraw*) y vincúlala a
+   la IP pública de tu casa. Para probar, créala en **Demo trading** y deja `okx_demo: true`.
+2. Rellena las tres opciones `okx_*`, activa `trading_enabled` y reinicia la app.
+3. Copia las automatizaciones de `dashboards/automations/ha_trading_helper_telegram.yaml` en
+   Home Assistant (sustituyen al aviso sin botones).
+
+Al pulsar **Comprar**, el bot pide el importe; tras **Confirmar** compra a mercado, pone el
+stop en OKX y registra la posición. **Vender** cancela ese stop y vende la cantidad comprada.
+Las peticiones caducan a los 10 minutos. `/posiciones` lista las abiertas.
+
 ## Datos
 
 En `/data` de la app: caché de velas (Parquet), `validation-<moneda>-<vela>.json` (último walk-forward, uno por moneda y temporalidad) y
-`signals.jsonl` (cada cambio de acción, para comparar en vivo contra el backtest).
+`signals.jsonl` (cada cambio de acción, para comparar en vivo contra el backtest) y
+`positions.json` (posiciones abiertas desde Telegram).

@@ -112,3 +112,28 @@ async def test_publisher_reconnects_after_broker_drop(
         await pub.send([Message("hth_rc/x", "1")])
     got = await retained(host, port, "hth_rc/x", 1)
     assert got["hth_rc/x"] == "1"
+
+
+async def test_telegram_bridge_answers_over_mqtt(broker: DockerContainer, tmp_path: Path) -> None:
+    from ha_trading_helper.publish.mqtt import serve_requests
+
+    host, port = broker.get_container_host_ip(), int(broker.get_exposed_port(1883))
+    settings = Settings(_env_file=None, mqtt_host=host, mqtt_port=port, base_topic="hth_tg")  # type: ignore[call-arg]
+    runner = Runner(settings.model_copy(update={"data_dir": tmp_path}))
+    bridge = asyncio.create_task(serve_requests(settings, runner.handle_telegram))
+    try:
+        async with aiomqtt.Client(host, port, identifier="test-telegram") as client:
+            await client.subscribe("hth_tg/telegram/out")
+            await asyncio.sleep(0.5)  # let the bridge subscribe
+            await client.publish("hth_tg/telegram/in", "not json")  # ignored, bridge survives
+            await client.publish(
+                "hth_tg/telegram/in", json.dumps({"type": "callback", "data": "/hth buy SOL-USDC"})
+            )
+            async with asyncio.timeout(10):
+                async for msg in client.messages:
+                    reply = json.loads(msg.payload.decode())  # type: ignore[union-attr]
+                    break
+    finally:
+        bridge.cancel()
+    assert reply["text"].startswith("La operativa está desactivada")
+    assert reply["keyboard"] == []

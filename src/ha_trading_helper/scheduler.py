@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import signal
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import structlog
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -19,10 +20,15 @@ from ha_trading_helper.backtest.walkforward import load_validation, save_report,
 from ha_trading_helper.config import Settings
 from ha_trading_helper.data.store import CandleStore
 from ha_trading_helper.okx.client import OkxClient
+from ha_trading_helper.okx.trade import OkxTradeClient
 from ha_trading_helper.publish import payloads
-from ha_trading_helper.publish.mqtt import MqttPublisher
+from ha_trading_helper.publish.mqtt import MqttPublisher, serve_requests
 from ha_trading_helper.service import SignalLog, load_history, scan, validation_path
+from ha_trading_helper.strategy.signal import Signal
 from ha_trading_helper.timeframe import close_hours
+from ha_trading_helper.trading.executor import Executor
+from ha_trading_helper.trading.positions import PositionStore
+from ha_trading_helper.trading.telegram import Conversation
 
 log = structlog.get_logger(__name__)
 
@@ -39,12 +45,43 @@ class Runner:
         self._published_pairs: set[str] = set()
         self._swept_retained = False
         self._lock = asyncio.Lock()
+        self.positions = PositionStore(settings.data_dir)
+        self.latest: dict[str, Signal] = {}
+        self.trade_client: OkxTradeClient | None = None
+        executor = None
+        if settings.trading_ready:
+            self.trade_client = OkxTradeClient(
+                settings.okx_api_key or "",
+                settings.okx_api_secret or "",
+                settings.okx_passphrase or "",
+                demo=settings.okx_demo,
+            )
+            executor = Executor(
+                self.trade_client,
+                self.positions,
+                stop_on_exchange=settings.stop_loss_on_exchange,
+            )
+        self.conversation = Conversation(settings, executor, self.positions, self.latest_signal)
+
+    def latest_signal(self, pair: str) -> Signal | None:
+        return self.latest.get(pair)
+
+    def scan_settings(self) -> Settings:
+        """Settings plus the positions opened from Telegram, so SALIR can fire for them."""
+        opened = {p.pair: p.as_signal_position() for p in self.positions.load().values()}
+        manual = [p for p in self.settings.positions if p.pair not in opened]
+        return self.settings.model_copy(update={"positions": [*manual, *opened.values()]})
+
+    async def handle_telegram(self, event: dict[str, Any]) -> list[dict[str, Any]]:
+        replies = await self.conversation.handle(event)
+        return [r.model_dump() for r in replies]
 
     async def cycle(self) -> None:
         async with self._lock:
             started = datetime.now(UTC)
             async with OkxClient() as client:
-                result = await scan(self.settings, client, self.store)
+                result = await scan(self.scan_settings(), client, self.store)
+            self.latest = {sig.pair: sig for sig in result.signals}
             s = self.settings
             pairs = [sig.pair for sig in result.signals]
             messages = payloads.discovery_messages(pairs, s.base_topic, s.discovery_prefix)
@@ -155,7 +192,11 @@ class Runner:
         log.info("scheduler_started", bar=self.settings.bar)
         await self.safe_cycle()
         background = asyncio.create_task(self.safe_revalidate(only_if_stale=True))
+        bridge = asyncio.create_task(serve_requests(self.settings, self.handle_telegram))
         await stop.wait()
         background.cancel()
+        bridge.cancel()
         scheduler.shutdown(wait=False)
         await self.publisher.close()
+        if self.trade_client is not None:
+            await self.trade_client.__aexit__(None, None, None)

@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+import json
+from collections.abc import Awaitable, Callable
 from types import TracebackType
-from typing import Self
+from typing import Any, Self
 
 import aiomqtt
 import structlog
@@ -105,3 +107,42 @@ class MqttPublisher:
                 self._client = None
                 if attempt == 2:
                     raise
+
+
+async def serve_requests(
+    settings: Settings,
+    handle: Callable[[dict[str, Any]], Awaitable[list[dict[str, Any]]]],
+    *,
+    retry_seconds: float = 5.0,
+) -> None:
+    """Answer messages on ``<base>/telegram/in`` with replies on ``<base>/telegram/out``.
+
+    Uses its own connection so it never competes with the publisher for messages.
+    Runs until cancelled, reconnecting if the broker goes away.
+    """
+    topic_in = f"{settings.base_topic}/telegram/in"
+    topic_out = f"{settings.base_topic}/telegram/out"
+    while True:
+        try:
+            async with aiomqtt.Client(
+                hostname=settings.mqtt_host,
+                port=settings.mqtt_port,
+                username=settings.mqtt_username,
+                password=settings.mqtt_password,
+                identifier=f"{settings.base_topic}-telegram",
+            ) as client:
+                await client.subscribe(topic_in, qos=1)
+                log.info("telegram_bridge_ready", topic=topic_in)
+                async for msg in client.messages:
+                    try:
+                        raw = msg.payload.decode() if isinstance(msg.payload, bytes) else ""
+                        event = json.loads(raw)
+                        replies = await handle(event if isinstance(event, dict) else {})
+                    except Exception:
+                        log.exception("telegram_request_failed")
+                        continue
+                    for reply in replies:
+                        await client.publish(topic_out, json.dumps(reply), qos=1)
+        except aiomqtt.MqttError as exc:
+            log.warning("telegram_bridge_disconnected", error=str(exc))
+            await asyncio.sleep(retry_seconds)

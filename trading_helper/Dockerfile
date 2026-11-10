@@ -22,6 +22,6 @@ COPY --from=builder /opt/venv /opt/venv
 ENV PATH=/opt/venv/bin:$PATH \
     HTH_DATA_DIR=/data \
     PYTHONUNBUFFERED=1
-LABEL io.hass.type="addon" io.hass.version="0.3.0"
+LABEL io.hass.type="addon" io.hass.version="0.4.0"
 WORKDIR /data
 CMD ["ha-trading-helper", "serve"]

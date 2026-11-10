@@ -1,7 +1,7 @@
 name: HA Trading Helper
-version: "0.3.0"
+version: "0.4.0"
 slug: ha_trading_helper
-description: Señales cripto explicables de OKX (spot, velas de 1 h a 1 día). Solo alertas, no ejecuta órdenes.
+description: Señales cripto explicables de OKX (spot, velas de 1 h a 1 día). Opcional, compra y venta confirmadas por Telegram.
 url: https://github.com/jmanera/ha-trading-helper
 arch:
   - amd64
@@ -26,6 +26,10 @@ options:
   fee_pct: 0.1
   slippage_pct: 0.05
   positions: []
+  trading_enabled: false
+  okx_demo: true
+  max_order_amount: 500
+  stop_loss_on_exchange: true
   log_level: INFO
 schema:
   quote_currency: list(USDC|USDT|EUR)
@@ -46,6 +50,13 @@ schema:
     - pair: match(^[A-Z0-9]+-(USDT|EUR|USDC)$)
       entry_price: float(0,)
       entry_time: str
+  trading_enabled: bool
+  okx_demo: bool
+  okx_api_key: str?
+  okx_api_secret: password?
+  okx_passphrase: password?
+  max_order_amount: float(1,)
+  stop_loss_on_exchange: bool
   log_level: list(DEBUG|INFO|WARNING|ERROR)
   mqtt_host: str?
   mqtt_port: port?
