@@ -117,14 +117,14 @@ async def test_revalidate_writes_report(tmp_path: Path, monkeypatch: pytest.Monk
     monkeypatch.setattr(r, "cycle", fake_cycle)
     assert r.validation_is_stale()
     await r.safe_revalidate(only_if_stale=True)
-    report = json.loads((tmp_path / "validation-usdt.json").read_text())
+    report = json.loads((tmp_path / "validation-usdt-4h.json").read_text())
     assert "validation" in report
     assert not r.validation_is_stale()
     await r.safe_revalidate(only_if_stale=True)  # fresh: nothing to do
     assert cycles == [1]
 
     report["validation"]["generated_at"] = "2020-01-01T00:00:00Z"
-    (tmp_path / "validation-usdt.json").write_text(json.dumps(report))
+    (tmp_path / "validation-usdt-4h.json").write_text(json.dumps(report))
     assert r.validation_is_stale()
 
     async def broken(*_: object, **__: object) -> None:

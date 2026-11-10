@@ -22,10 +22,10 @@ from ha_trading_helper.okx.client import OkxClient
 from ha_trading_helper.publish import payloads
 from ha_trading_helper.publish.mqtt import MqttPublisher
 from ha_trading_helper.service import SignalLog, load_history, scan, validation_path
+from ha_trading_helper.timeframe import close_hours
 
 log = structlog.get_logger(__name__)
 
-CRON_HOURS = {"1H": "*", "4H": "0,4,8,12,16,20", "1D": "0"}
 VALIDATION_MAX_AGE = timedelta(days=7)
 VALIDATION_YEARS = 2.0
 
@@ -136,7 +136,7 @@ class Runner:
         scheduler.add_job(
             self.safe_cycle,
             CronTrigger(
-                hour=CRON_HOURS.get(self.settings.bar, CRON_HOURS["4H"]),
+                hour=close_hours(self.settings.bar),
                 minute=delay // 60,
                 second=delay % 60,
                 timezone=UTC,

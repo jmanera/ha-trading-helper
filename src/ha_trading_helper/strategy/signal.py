@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import StrEnum
 
 import pandas as pd
@@ -14,10 +14,10 @@ from ha_trading_helper.strategy.features import compute_features
 from ha_trading_helper.strategy.risk import Levels, compute_levels
 from ha_trading_helper.strategy.rules import EVIDENCES, exit_signal
 from ha_trading_helper.strategy.scoring import score_frame
+from ha_trading_helper.timeframe import duration
 
 MIN_VALIDATION_TRADES = 30
 MIN_PROFIT_FACTOR = 1.1
-BAR_DURATION = {"1H": timedelta(hours=1), "4H": timedelta(hours=4), "1D": timedelta(days=1)}
 
 
 class Action(StrEnum):
@@ -190,7 +190,7 @@ def build_signal(
         action=action,
         score=score,
         candle_open=candle_open,
-        candle_close=candle_open + BAR_DURATION.get(settings.bar, timedelta(hours=4)),
+        candle_close=candle_open + duration(settings.bar),
         close=float(row.close),
         reasons=reasons,
         market_ok=market_is_ok,

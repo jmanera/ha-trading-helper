@@ -1,6 +1,6 @@
 # HA Trading Helper
 
-Señales cripto explicables de OKX (spot, velas de 4 h) publicadas como entidades de Home
+Señales cripto explicables de OKX (spot, velas de 4 h por defecto; de 1 h a 1 día) publicadas como entidades de Home
 Assistant. **Solo alertas: no ejecuta órdenes ni necesita claves de OKX.** No es
 asesoramiento financiero.
 
@@ -11,7 +11,7 @@ asesoramiento financiero.
 
 ## Qué hace
 
-- Al arrancar y tras cada cierre de vela de 4 h (00, 04, 08, 12, 16, 20 UTC + 1 min) analiza
+- Al arrancar y tras cada cierre de vela (con 4 h: 00, 04, 08, 12, 16, 20 UTC + 1 min) analiza
   los pares más líquidos y publica:
   - `sensor.ha_trading_helper_mejor_oportunidad`
   - `sensor.ha_trading_helper_<par>_puntuacion` (motivos en los atributos)
@@ -26,6 +26,7 @@ asesoramiento financiero.
 | Opción | Por defecto | Descripción |
 |---|---|---|
 | `quote_currency` | USDC | Moneda de cotización: USDC, USDT o EUR. BTC en esa moneda es la referencia de mercado |
+| `bar` | 4H | Temporalidad de vela: 1H, 2H, 4H, 6H, 12H o 1D (velas alineadas a UTC). Los indicadores cuentan velas, así que cambia el horizonte de la estrategia |
 | `pairs` | `[]` | Lista fija de pares; vacío = universo automático |
 | `max_pairs` | 20 | Tamaño del universo automático |
 | `min_volume_24h_usdt` | 5 000 000 | Filtro de liquidez, en USD equivalentes. En USDC y EUR hay menos pares líquidos que en USDT: baja este valor si salen pocos |
@@ -49,5 +50,5 @@ positions:
 
 ## Datos
 
-En `/data` de la app: caché de velas (Parquet), `validation-<moneda>.json` (último walk-forward, uno por moneda de cotización) y
+En `/data` de la app: caché de velas (Parquet), `validation-<moneda>-<vela>.json` (último walk-forward, uno por moneda y temporalidad) y
 `signals.jsonl` (cada cambio de acción, para comparar en vivo contra el backtest).

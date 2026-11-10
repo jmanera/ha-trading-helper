@@ -19,6 +19,8 @@ from pydantic_settings import (
     SettingsConfigDict,
 )
 
+from ha_trading_helper.timeframe import Timeframe
+
 HA_OPTIONS_FILE = Path("/data/options.json")
 
 # Quote currencies with enough OKX spot liquidity to build a universe.
@@ -64,7 +66,7 @@ class Settings(BaseSettings):
     benchmark: str = Field(default="", description="Empty = BTC in the quote currency")
 
     # Strategy
-    bar: str = "4H"
+    bar: Timeframe = "4H"
     min_history: int = 250
     enter_threshold: int = 70
     wait_threshold: int = 40

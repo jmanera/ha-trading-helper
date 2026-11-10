@@ -70,7 +70,7 @@ def history_ok(f: pd.DataFrame, min_history: int) -> pd.Series:
 
 
 def market_ok(f: pd.DataFrame) -> pd.Series:
-    """Market filter: BTC closes above its 4h EMA 200."""
+    """Market filter: the benchmark (BTC) closes above its EMA 200."""
     return f["btc_close"] > f["btc_ema200"]
 
 

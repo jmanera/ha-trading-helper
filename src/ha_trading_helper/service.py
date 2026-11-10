@@ -19,13 +19,13 @@ from ha_trading_helper.data.universe import UniverseRules, select_universe
 from ha_trading_helper.okx.client import OkxClient, OkxError
 from ha_trading_helper.publish import payloads
 from ha_trading_helper.strategy.signal import Action, Signal, build_signal
+from ha_trading_helper.timeframe import bars_per_year
 
 log = structlog.get_logger(__name__)
 
 # Enough for EMA 200 warm-up plus a margin.
 LIVE_HISTORY = 300
 CONCURRENCY = 4
-BARS_PER_YEAR = {"1H": 24 * 365, "4H": 6 * 365, "1D": 365}
 
 
 @dataclass
@@ -40,8 +40,9 @@ class ScanResult:
 
 
 def validation_path(settings: Settings) -> Path:
-    """One report per quote currency: the universe, and so the validation, depends on it."""
-    return settings.data_dir / f"validation-{settings.quote_currency.lower()}.json"
+    """One report per quote currency and timeframe: the validation depends on both."""
+    name = f"validation-{settings.quote_currency}-{settings.bar}".lower()
+    return settings.data_dir / f"{name}.json"
 
 
 async def resolve_universe(settings: Settings, client: OkxClient) -> list[str]:
@@ -117,7 +118,7 @@ async def load_history(
     progress: Callable[[str], None] | None = None,
 ) -> tuple[dict[str, pd.DataFrame], pd.DataFrame]:
     """Candles for a backtest: ``years`` of history plus the indicator warm-up."""
-    count = int(BARS_PER_YEAR.get(settings.bar, 2190) * years) + settings.min_history
+    count = int(bars_per_year(settings.bar) * years) + settings.min_history
     store = CandleStore(settings.data_dir)
     if not pairs:
         pairs = await resolve_universe(settings, client)

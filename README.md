@@ -1,7 +1,7 @@
 # HA Trading Helper
 
-Asesor de señales cripto **explicables** para Home Assistant. Al cerrar cada vela de 4 h
-puntúa los pares spot más líquidos de OKX con indicadores técnicos clásicos, publica el
+Asesor de señales cripto **explicables** para Home Assistant. Al cerrar cada vela (4 h por
+defecto) puntúa los pares spot más líquidos de OKX con indicadores técnicos clásicos, publica el
 resultado en Home Assistant por MQTT Discovery y explica punto a punto en qué se basa cada
 señal.
 
@@ -28,8 +28,9 @@ Validación: Fuera de muestra: 34 % aciertos, esperanza +0,04R tras costes (n=35
 1. **Universo**: pares de OKX en la moneda de cotización elegida (USDC por defecto; también
    USDT o EUR) con volumen 24 h ≥ 5 M USD y spread ≤ 0,2 %, sin stablecoins ni acciones
    tokenizadas (o una lista fija de pares). BTC en esa moneda es la referencia de mercado.
-2. **Datos**: velas de 4 h de los endpoints públicos de OKX v5, solo velas cerradas
-   (`confirm=1`), caché incremental en Parquet.
+2. **Datos**: velas de los endpoints públicos de OKX v5 (4 h por defecto; configurable entre
+   1 h y 1 día, siempre alineadas a UTC), solo velas cerradas (`confirm=1`), caché incremental
+   en Parquet.
 3. **Puntuación 0-100** sumando evidencias (pesos configurables):
 
    | Evidencia | Condición | Puntos |
@@ -77,7 +78,7 @@ uv sync                                   # dependencias
 make check                                # lint + tipos + tests + auditoría
 uv run ha-trading-helper scan             # ranking con motivos (sin Home Assistant)
 uv run ha-trading-helper backtest --pair SOL-USDC --years 2 --trades
-uv run ha-trading-helper validate --years 2   # walk-forward -> .data/validation-usdc.json
+uv run ha-trading-helper validate --years 2   # walk-forward -> .data/validation-usdc-4h.json
 ```
 
 Stack completo (Mosquitto + Home Assistant + la app):
@@ -104,8 +105,8 @@ make app-bundle          # crea dist/ha_trading_helper/
 4. Copia `dashboards/ha_trading_helper.yaml` como panel nuevo (modo YAML o pegándolo en el
    editor en bruto) y adapta `notify.notify` en la automatización de ejemplo.
 
-Al arrancar hace un ciclo, lo repite tras cada cierre de vela de 4 h (00, 04, 08, 12, 16 y
-20 UTC + 1 min) y recalcula la validación cada domingo (o al arrancar si falta o tiene más de
+Al arrancar hace un ciclo, lo repite tras cada cierre de vela (con 4 h: 00, 04, 08, 12, 16
+y 20 UTC + 1 min) y recalcula la validación cada domingo (o al arrancar si falta o tiene más de
 7 días; la primera descarga de 2 años de histórico tarda unos minutos).
 
 ## Desarrollo

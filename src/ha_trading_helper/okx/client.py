@@ -20,6 +20,7 @@ import structlog
 
 from ha_trading_helper.okx.models import Candle, Instrument, Ticker
 from ha_trading_helper.okx.rate_limit import RateLimiter
+from ha_trading_helper.timeframe import okx_bar
 
 BASE_URL = "https://www.okx.com"
 RECENT_LIMIT = 300
@@ -115,7 +116,7 @@ class OkxClient:
     async def recent_candles(
         self, inst_id: str, bar: str = "4H", limit: int = RECENT_LIMIT
     ) -> list[Candle]:
-        params = {"instId": inst_id, "bar": bar, "limit": str(min(limit, RECENT_LIMIT))}
+        params = {"instId": inst_id, "bar": okx_bar(bar), "limit": str(min(limit, RECENT_LIMIT))}
         rows = await self._get("/api/v5/market/candles", params)
         return sorted((Candle.from_row(r) for r in rows), key=lambda c: c.ts)
 
@@ -141,7 +142,7 @@ class OkxClient:
                 break
             params = {
                 "instId": inst_id,
-                "bar": bar,
+                "bar": okx_bar(bar),
                 "after": str(int(oldest.timestamp() * 1000)),
                 "limit": str(HISTORY_LIMIT),
             }

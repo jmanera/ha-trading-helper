@@ -201,13 +201,15 @@ def test_settings_from_ha_options(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
 def test_quote_currency_drives_benchmark_and_validation_file(tmp_path: Path) -> None:
     s = Settings(_env_file=None, data_dir=tmp_path)  # type: ignore[call-arg]
     assert s.quote_currency == "USDC" and s.benchmark == "BTC-USDC"
-    assert validation_path(s) == tmp_path / "validation-usdc.json"
-    eur = Settings(_env_file=None, data_dir=tmp_path, quote_currency="EUR")  # type: ignore[call-arg]
-    assert eur.benchmark == "BTC-EUR" and validation_path(eur).name == "validation-eur.json"
+    assert validation_path(s) == tmp_path / "validation-usdc-4h.json"
+    eur = Settings(_env_file=None, data_dir=tmp_path, quote_currency="EUR", bar="1D")  # type: ignore[call-arg]
+    assert eur.benchmark == "BTC-EUR" and validation_path(eur).name == "validation-eur-1d.json"
     custom = Settings(_env_file=None, quote_currency="EUR", benchmark="ETH-EUR")  # type: ignore[call-arg]
     assert custom.benchmark == "ETH-EUR"
     with pytest.raises(ValidationError):
         Settings(_env_file=None, quote_currency="DOGE")  # type: ignore[call-arg]
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, bar="3H")  # type: ignore[call-arg]
 
 
 @respx.mock
