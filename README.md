@@ -64,7 +64,7 @@ Todas bajo el dispositivo **HA Trading Helper**:
 | `binary_sensor.ha_trading_helper_<par>_entrada` | on si ENTRAR | |
 | `sensor.ha_trading_helper_estado` | ok / degradada / error | última vela, errores, validación |
 
-El panel **Cripto 4H** ([dashboards/ha_trading_helper.yaml](dashboards/ha_trading_helper.yaml))
+El panel **Señales cripto** ([dashboards/ha_trading_helper.yaml](dashboards/ha_trading_helper.yaml))
 usa solo tarjetas estándar, y hay una automatización de ejemplo que avisa al móvil cuando un
 par pasa a ENTRAR o SALIR ([dashboards/automations/](dashboards/automations/)).
 

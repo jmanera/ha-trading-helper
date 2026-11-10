@@ -1,7 +1,7 @@
 # Example: notify when any pair changes to ENTRAR or SALIR.
 # Replace notify.notify with your phone, e.g. notify.mobile_app_<device>.
 - id: ha_trading_helper_cambio_senal
-  alias: "Cripto 4H: aviso de ENTRAR / SALIR"
+  alias: "Señales cripto: aviso de ENTRAR / SALIR"
   mode: queued
   triggers:
     - trigger: event
