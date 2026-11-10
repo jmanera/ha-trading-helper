@@ -96,7 +96,7 @@ Home Assistant, desde la pestaña de configuración de la app.
 make app-bundle          # crea dist/ha_trading_helper/
 ```
 
-1. Copia `dist/ha_trading_helper/` a la carpeta `/addons/` de Home Assistant (Samba o SSH).
+1. Copia `dist/ha_trading_helper/` a la carpeta de apps locales de Home Assistant: `/addons/` (Samba) o `/local_apps/` por SSH en versiones recientes.
 2. *Ajustes → Apps → Tienda de apps → ⋮ → Buscar actualizaciones*; aparece en *Apps locales*.
 3. Instala, revisa las opciones y arranca. Necesita la app **Mosquitto broker** y la
    integración MQTT; las credenciales se obtienen solas del Supervisor.

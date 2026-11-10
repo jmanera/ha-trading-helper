@@ -46,12 +46,12 @@ up:  ## Mosquitto + Home Assistant + app with Docker Compose
 down:
 	docker compose down
 
-app-bundle:  ## Self-contained app folder for /addons on Home Assistant
+app-bundle:  ## Self-contained app folder for /addons (/local_apps) on Home Assistant
 	rm -rf dist/ha_trading_helper && mkdir -p dist/ha_trading_helper
 	cp -r trading_helper/. dist/ha_trading_helper/
 	cp -r pyproject.toml uv.lock README.md src dist/ha_trading_helper/
 	find dist/ha_trading_helper -name '__pycache__' -prune -exec rm -rf {} +
-	@echo "Copy dist/ha_trading_helper to /addons/ on Home Assistant"
+	@echo "Copy dist/ha_trading_helper to /addons/ (/local_apps/ over SSH) on Home Assistant"
 
 clean:
 	rm -rf dist .pytest_cache .mypy_cache .ruff_cache .coverage coverage.xml htmlcov

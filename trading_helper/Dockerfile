@@ -1,8 +1,10 @@
 # Build context: a directory with pyproject.toml, uv.lock, README.md and src/
 # (the repository root, or the bundle produced by `make app-bundle`).
-ARG BUILD_FROM=python:3.12-slim-bookworm
+# Not BUILD_FROM: recent Supervisors ignore build.yaml and pass the Alpine HA base image
+# as BUILD_FROM, which lacks Python 3.12 and glibc wheels for pyarrow.
+ARG PYTHON_IMAGE=python:3.12-slim-bookworm
 
-FROM ${BUILD_FROM} AS builder
+FROM ${PYTHON_IMAGE} AS builder
 COPY --from=ghcr.io/astral-sh/uv:0.13.7 /uv /bin/uv
 ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
@@ -15,7 +17,7 @@ RUN uv sync --frozen --no-dev --no-install-project
 COPY src ./src
 RUN uv sync --frozen --no-dev --no-editable
 
-FROM ${BUILD_FROM}
+FROM ${PYTHON_IMAGE}
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH=/opt/venv/bin:$PATH \
     HTH_DATA_DIR=/data \
