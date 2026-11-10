@@ -8,7 +8,7 @@ views:
     cards:
       - type: markdown
         title: Mejor oportunidad
-        content: >-
+        content: |-
           {% set e = 'sensor.ha_trading_helper_mejor_oportunidad' %}
           {% set a = states[e].attributes if states[e] else {} %}
           {% if a.par is defined %}
@@ -27,24 +27,24 @@ views:
 
       - type: markdown
         title: Ranking
-        content: >-
+        content: |-
           {% set ns = namespace(rows=[]) %}
           {% for s in states.sensor
                if s.entity_id is match('sensor\.ha_trading_helper_.*_puntuacion$')
                and s.state | is_number %}
             {% set ns.rows = ns.rows + [s] %}
-          {% endfor %}
+          {%- endfor %}
           {% set icon = {'ENTRAR': '🟢', 'SALIR': '🔴', 'ESPERAR': '🟡'} %}
           | | Par | Acción | Puntos |
           |:-:|:--|:--|--:|
-          {% for s in (ns.rows | sort(attribute='state', reverse=true)
+          {% for s in (ns.rows | sort(attribute='attributes.puntuacion', reverse=true)
                        | sort(attribute='attributes.vigilar', reverse=true))[:10] -%}
           | {{ icon.get(s.attributes.accion, '⚪') if s.attributes.vigilar else '⚪' }} | {{ s.attributes.par }} | {{ s.attributes.accion }} | {{ s.state }} |
           {% endfor %}
 
       - type: markdown
         title: Por qué
-        content: >-
+        content: |-
           {% set e = 'sensor.ha_trading_helper_mejor_oportunidad' %}
           {% set a = states[e].attributes if states[e] else {} %}
           {% if a.motivos is defined %}

@@ -9,13 +9,17 @@ import pandas as pd
 from ha_trading_helper.strategy.rules import MOMENTUM_LOOKBACK, RSI_PULLBACK_LOOKBACK, VOLUME_SPIKE
 
 
+def _decimals(value: float) -> int:
+    mag = abs(value)
+    return 1 if mag >= 100 else 2 if mag >= 1 else 4 if mag >= 0.01 else 8
+
+
 def fmt(value: float, decimals: int | None = None) -> str:
     """Spanish number format with a precision that suits the magnitude."""
     if value is None or (isinstance(value, float) and math.isnan(value)):
         return "n/d"
     if decimals is None:
-        mag = abs(value)
-        decimals = 1 if mag >= 100 else 2 if mag >= 1 else 4 if mag >= 0.01 else 8
+        decimals = _decimals(value)
     text = f"{value:,.{decimals}f}"
     return text.replace(",", "_").replace(".", ",").replace("_", ".")
 
@@ -37,7 +41,8 @@ def describe(key: str, f: pd.DataFrame, i: int, passed: bool) -> str:
         window = f["macd_hist"].iloc[max(0, i - MOMENTUM_LOOKBACK) : i + 1]
         before = window.iloc[0] if len(window) else float("nan")
         if passed:
-            return f"histograma pasa de {fmt(before)} a {fmt(row.macd_hist)}"
+            digits = _decimals(max(abs(before), abs(row.macd_hist)))
+            return f"histograma pasa de {fmt(before, digits)} a {fmt(row.macd_hist, digits)}"
         return f"histograma {fmt(row.macd_hist)}, sin cruce alcista reciente"
     if key == "rsi":
         prev = f["rsi"].iloc[max(0, i - RSI_PULLBACK_LOOKBACK) : i]

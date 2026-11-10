@@ -27,4 +27,4 @@
           +{{ m.p }} {{ m.e }}: {{ m.d }}{{ '\n' }}
           {%- endfor -%}
           {{ a.resumen_niveles | default('') }}{% endif %}
-          {{ '' if a.alerta else '(informativa: estrategia sin validar)' }}
+          {{ '' if a.alerta else '\n(informativa: estrategia sin validar)' }}
