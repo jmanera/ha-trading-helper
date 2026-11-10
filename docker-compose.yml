@@ -1,0 +1,41 @@
+# Local stack: Mosquitto + Home Assistant + the app, no Supervisor needed.
+# First run: open http://localhost:8123, finish onboarding and add the MQTT
+# integration with broker "mosquitto" (HA no longer accepts it from YAML).
+# The "Cripto 4H" dashboard is loaded from dashboards/ in YAML mode.
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    volumes:
+      - ./deploy/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    ports:
+      - "1883:1883"
+    restart: unless-stopped
+
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    volumes:
+      - ha-config:/config
+      - ./deploy/ha-config/configuration.yaml:/config/configuration.yaml:ro
+      - ./dashboards:/config/dashboards:ro
+    ports:
+      - "8123:8123"
+    depends_on: [mosquitto]
+    restart: unless-stopped
+
+  app:
+    build:
+      context: .
+      dockerfile: trading_helper/Dockerfile
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      HTH_MQTT_HOST: mosquitto
+      HTH_DATA_DIR: /data
+    volumes:
+      - ./.data:/data
+    depends_on: [mosquitto]
+    restart: unless-stopped
+
+volumes:
+  ha-config:

@@ -1,0 +1,86 @@
+# "Cripto 4H" dashboard: four standard cards, no custom components.
+# Entity ids assume the default base topic "ha_trading_helper".
+title: Cripto 4H
+views:
+  - title: Cripto 4H
+    path: cripto-4h
+    icon: mdi:chart-line
+    cards:
+      - type: markdown
+        title: Mejor oportunidad
+        content: >-
+          {% set e = 'sensor.ha_trading_helper_mejor_oportunidad' %}
+          {% set a = states[e].attributes if states[e] else {} %}
+          {% if a.par is defined %}
+          {% set color = {'ENTRAR': 'green', 'SALIR': 'red'}.get(a.accion, 'orange') %}
+          ## {{ a.par }} · <font color="{{ color }}">{{ a.accion }}</font> · {{ a.puntuacion }}/100
+
+          {% if a.resumen_niveles is defined %}**Niveles:** {{ a.resumen_niveles }}{% endif %}
+
+          {% if a.salida is defined %}**Salida:** {{ a.salida }}{% endif %}
+
+          {{ 'Alerta validada' if a.alerta else 'Informativa (estrategia sin validar o sin señal)' }}
+          · vela cerrada {{ as_timestamp(a.vela_cierre) | timestamp_custom('%d/%m %H:%M') }}
+          {% else %}
+          Sin datos todavía.
+          {% endif %}
+
+      - type: markdown
+        title: Ranking
+        content: >-
+          {% set ns = namespace(rows=[]) %}
+          {% for s in states.sensor
+               if s.entity_id is match('sensor\.ha_trading_helper_.*_puntuacion$')
+               and s.state | is_number %}
+            {% set ns.rows = ns.rows + [s] %}
+          {% endfor %}
+          {% set icon = {'ENTRAR': '🟢', 'SALIR': '🔴', 'ESPERAR': '🟡'} %}
+          | | Par | Acción | Puntos |
+          |:-:|:--|:--|--:|
+          {% for s in (ns.rows | sort(attribute='state', reverse=true)
+                       | sort(attribute='attributes.vigilar', reverse=true))[:10] -%}
+          | {{ icon.get(s.attributes.accion, '⚪') if s.attributes.vigilar else '⚪' }} | {{ s.attributes.par }} | {{ s.attributes.accion }} | {{ s.state }} |
+          {% endfor %}
+
+      - type: markdown
+        title: Por qué
+        content: >-
+          {% set e = 'sensor.ha_trading_helper_mejor_oportunidad' %}
+          {% set a = states[e].attributes if states[e] else {} %}
+          {% if a.motivos is defined %}
+          **{{ a.par }}**: {{ a.puntuacion }} de 100 puntos
+
+          {% for m in a.motivos -%}
+          - {{ '✅' if m.p > 0 else '▫️' }} **+{{ m.p }}** {{ m.e }}: {{ m.d }}
+          {% endfor %}
+
+          **Mercado:** {{ a.mercado }} {{ '✅' if a.mercado_ok else '⛔' }}
+
+          **Validación:** {{ a.validacion }}
+          {% else %}
+          Sin datos todavía.
+          {% endif %}
+
+      - type: entities
+        title: Estado del sistema
+        entities:
+          - entity: sensor.ha_trading_helper_estado
+            name: Servicio
+          - type: attribute
+            entity: sensor.ha_trading_helper_estado
+            attribute: ultima_vela
+            name: Última vela analizada
+            format: datetime
+          - type: attribute
+            entity: sensor.ha_trading_helper_estado
+            attribute: ultima_ejecucion
+            name: Última ejecución
+            format: relative
+          - type: attribute
+            entity: sensor.ha_trading_helper_estado
+            attribute: pares_analizados
+            name: Pares analizados
+          - type: attribute
+            entity: sensor.ha_trading_helper_estado
+            attribute: validacion
+            name: Validación histórica

@@ -1,0 +1,30 @@
+# Example: notify when any pair changes to ENTRAR or SALIR.
+# Replace notify.notify with your phone, e.g. notify.mobile_app_<device>.
+- id: ha_trading_helper_cambio_senal
+  alias: "Cripto 4H: aviso de ENTRAR / SALIR"
+  mode: queued
+  triggers:
+    - trigger: event
+      event_type: state_changed
+  conditions:
+    - condition: template
+      value_template: >-
+        {{ trigger.event.data.entity_id is match('sensor\.ha_trading_helper_.*_puntuacion$')
+           and trigger.event.data.new_state is not none
+           and trigger.event.data.new_state.attributes.accion in ['ENTRAR', 'SALIR']
+           and (trigger.event.data.old_state is none
+                or trigger.event.data.old_state.attributes.accion
+                   != trigger.event.data.new_state.attributes.accion) }}
+  actions:
+    - variables:
+        a: "{{ trigger.event.data.new_state.attributes }}"
+    - action: notify.notify
+      data:
+        title: "{{ a.par }}: {{ a.accion }} ({{ a.puntuacion }}/100)"
+        message: >-
+          {% if a.accion == 'SALIR' %}{{ a.salida }}{% else %}
+          {%- for m in (a.motivos | selectattr('p', 'gt', 0) | sort(attribute='p', reverse=true))[:3] -%}
+          +{{ m.p }} {{ m.e }}: {{ m.d }}{{ '\n' }}
+          {%- endfor -%}
+          {{ a.resumen_niveles | default('') }}{% endif %}
+          {{ '' if a.alerta else '(informativa: estrategia sin validar)' }}

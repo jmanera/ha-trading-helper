@@ -1,0 +1,13 @@
+# Minimal Home Assistant configuration for the local docker-compose stack.
+default_config:
+
+lovelace:
+  dashboards:
+    cripto-4h:
+      mode: yaml
+      title: Cripto 4H
+      icon: mdi:chart-line
+      show_in_sidebar: true
+      filename: dashboards/ha_trading_helper.yaml
+
+automation: !include_dir_merge_list dashboards/automations

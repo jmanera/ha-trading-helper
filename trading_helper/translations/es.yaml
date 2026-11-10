@@ -1,0 +1,45 @@
+configuration:
+  pairs:
+    name: Pares
+    description: Lista fija de pares (p. ej. BTC-USDT). Vacío = los más líquidos de OKX.
+  max_pairs:
+    name: Máximo de pares
+    description: Tamaño del universo automático.
+  min_volume_24h_usdt:
+    name: Volumen mínimo 24 h (USDT)
+    description: Filtro de liquidez del universo automático.
+  enter_threshold:
+    name: Umbral de entrada
+    description: Puntuación mínima (0-100) para ENTRAR.
+  wait_threshold:
+    name: Umbral de vigilancia
+    description: Por encima de esta puntuación una moneda en ESPERAR se marca para vigilar.
+  require_validation:
+    name: Exigir validación
+    description: ENTRAR solo cuenta como alerta si la estrategia fue rentable fuera de muestra tras costes.
+  capital:
+    name: Capital simulado
+    description: Capital para calcular el tamaño de posición sugerido.
+  risk_per_trade_pct:
+    name: Riesgo por operación (%)
+  max_positions:
+    name: Posiciones simultáneas
+  fee_pct:
+    name: Comisión (%)
+    description: Comisión por lado. Compruébala en la página de comisiones de OKX.
+  slippage_pct:
+    name: Deslizamiento (%)
+  positions:
+    name: Posiciones abiertas
+    description: Para avisar de SALIR. entry_time en ISO 8601, p. ej. 2026-11-10T12:00:00Z.
+  log_level:
+    name: Nivel de log
+  mqtt_host:
+    name: Servidor MQTT
+    description: Déjalo vacío para usar el broker de la app Mosquitto.
+  mqtt_port:
+    name: Puerto MQTT
+  mqtt_username:
+    name: Usuario MQTT
+  mqtt_password:
+    name: Contraseña MQTT

@@ -1,0 +1,39 @@
+configuration:
+  pairs:
+    name: Pairs
+    description: Fixed list of pairs (e.g. BTC-USDT). Empty = most liquid OKX pairs.
+  max_pairs:
+    name: Max pairs
+  min_volume_24h_usdt:
+    name: Min 24h volume (USDT)
+  enter_threshold:
+    name: Entry threshold
+  wait_threshold:
+    name: Watch threshold
+  require_validation:
+    name: Require validation
+    description: ENTER only alerts when the strategy was profitable out of sample after costs.
+  capital:
+    name: Simulated capital
+  risk_per_trade_pct:
+    name: Risk per trade (%)
+  max_positions:
+    name: Max concurrent positions
+  fee_pct:
+    name: Fee (%)
+  slippage_pct:
+    name: Slippage (%)
+  positions:
+    name: Open positions
+    description: Used to signal EXIT. entry_time in ISO 8601.
+  log_level:
+    name: Log level
+  mqtt_host:
+    name: MQTT host
+    description: Leave empty to use the Mosquitto app broker.
+  mqtt_port:
+    name: MQTT port
+  mqtt_username:
+    name: MQTT user
+  mqtt_password:
+    name: MQTT password
