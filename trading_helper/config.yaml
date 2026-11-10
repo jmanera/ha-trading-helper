@@ -1,7 +1,7 @@
 name: HA Trading Helper
-version: "0.1.0"
+version: "0.3.0"
 slug: ha_trading_helper
-description: Señales cripto explicables de OKX (spot, velas de 4 h). Solo alertas, no ejecuta órdenes.
+description: Señales cripto explicables de OKX (spot, velas de 1 h a 1 día). Solo alertas, no ejecuta órdenes.
 url: https://github.com/jmanera/ha-trading-helper
 arch:
   - amd64
@@ -12,6 +12,8 @@ boot: auto
 services:
   - mqtt:need
 options:
+  quote_currency: USDC
+  bar: 4H
   pairs: []
   max_pairs: 20
   min_volume_24h_usdt: 5000000
@@ -26,6 +28,8 @@ options:
   positions: []
   log_level: INFO
 schema:
+  quote_currency: list(USDC|USDT|EUR)
+  bar: list(1H|2H|4H|6H|12H|1D)
   pairs:
     - match(^[A-Z0-9]+-(USDT|EUR|USDC)$)
   max_pairs: int(1,50)

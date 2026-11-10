@@ -21,6 +21,10 @@ class FakePublisher:
     def __init__(self) -> None:
         self.sent: list[list[Message]] = []
         self.fail = False
+        self.retained: set[str] = set()
+
+    async def retained_pairs(self) -> set[str]:
+        return self.retained
 
     async def send(self, messages: list[Message]) -> None:
         if self.fail:
@@ -32,6 +36,7 @@ class FakePublisher:
 
 
 def runner(tmp_path: Path, **kw: object) -> tuple[Runner, FakePublisher]:
+    kw.setdefault("quote_currency", "USDT")
     s = Settings(_env_file=None, data_dir=tmp_path, min_volume_24h_usdt=1, **kw)  # type: ignore[call-arg]
     r = Runner(s)
     fake = FakePublisher()
@@ -67,6 +72,23 @@ async def test_removed_pairs_get_empty_configs(
     assert len(removed) == 2
 
 
+@respx.mock
+async def test_first_cycle_removes_pairs_retained_by_earlier_runs(
+    tmp_path: Path, frames: dict[str, pd.DataFrame]
+) -> None:
+    mock_okx(frames)
+    r, fake = runner(tmp_path, pairs=["SOL-USDT"])
+    fake.retained = {"sol_usdt", "ada_usdt"}
+    await r.cycle()
+    removed = {m.topic for m in fake.sent[0] if m.payload == ""}
+    assert removed == {
+        "homeassistant/sensor/ha_trading_helper/ada_usdt_puntuacion/config",
+        "homeassistant/binary_sensor/ha_trading_helper/ada_usdt_entrada/config",
+    }
+    await r.cycle()  # the sweep runs once per process
+    assert not [m for m in fake.sent[1] if m.payload == ""]
+
+
 async def test_safe_cycle_swallows_errors(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     r, _ = runner(tmp_path)
 
@@ -95,14 +117,14 @@ async def test_revalidate_writes_report(tmp_path: Path, monkeypatch: pytest.Monk
     monkeypatch.setattr(r, "cycle", fake_cycle)
     assert r.validation_is_stale()
     await r.safe_revalidate(only_if_stale=True)
-    report = json.loads((tmp_path / "validation.json").read_text())
+    report = json.loads((tmp_path / "validation-usdt-4h.json").read_text())
     assert "validation" in report
     assert not r.validation_is_stale()
     await r.safe_revalidate(only_if_stale=True)  # fresh: nothing to do
     assert cycles == [1]
 
     report["validation"]["generated_at"] = "2020-01-01T00:00:00Z"
-    (tmp_path / "validation.json").write_text(json.dumps(report))
+    (tmp_path / "validation-usdt-4h.json").write_text(json.dumps(report))
     assert r.validation_is_stale()
 
     async def broken(*_: object, **__: object) -> None:

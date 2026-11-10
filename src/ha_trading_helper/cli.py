@@ -137,7 +137,7 @@ def validate(
     years: Annotated[float, typer.Option(help="Years of history")] = 2.0,
     folds: Annotated[int, typer.Option(help="Walk-forward test windows")] = 4,
 ) -> None:
-    """Walk-forward validation; writes validation.json used by live signals."""
+    """Walk-forward validation; writes validation-<quote>-<bar>.json used by live signals."""
     settings = _settings()
     data, benchmark = asyncio.run(_load_history(settings, pair or [], years))
     result = walk_forward(

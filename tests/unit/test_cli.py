@@ -72,5 +72,5 @@ def test_validate_command_writes_report(monkeypatch: pytest.MonkeyPatch, tmp_pat
     result = runner.invoke(cli.app, ["validate", "--folds", "2"])
     assert result.exit_code == 0, result.output
     assert "FUERA DE MUESTRA" in result.output
-    report = json.loads((tmp_path / "data" / "validation.json").read_text())
+    report = json.loads((tmp_path / "data" / "validation-usdc-4h.json").read_text())
     assert len(report["folds"]) == 2

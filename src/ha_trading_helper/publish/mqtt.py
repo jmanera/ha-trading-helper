@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from types import TracebackType
 from typing import Self
 
@@ -9,7 +10,7 @@ import aiomqtt
 import structlog
 
 from ha_trading_helper.config import Settings
-from ha_trading_helper.publish.payloads import Message
+from ha_trading_helper.publish.payloads import ENTITY_SUFFIXES, Message
 
 log = structlog.get_logger(__name__)
 
@@ -60,6 +61,30 @@ class MqttPublisher:
         tb: TracebackType | None,
     ) -> None:
         await self.close()
+
+    async def retained_pairs(self, wait: float = 2.0) -> set[str]:
+        """Slugs of the pairs whose discovery configs are retained on the broker.
+
+        Covers pairs published by earlier runs (e.g. before a quote currency change),
+        which this process would otherwise never remove.
+        """
+        s = self.settings
+        topic = f"{s.discovery_prefix}/+/{s.base_topic}/+/config"
+        client = self._client or await self.connect()
+        found: set[str] = set()
+        await client.subscribe(topic)
+        try:
+            async with asyncio.timeout(wait):
+                async for msg in client.messages:
+                    object_id = str(msg.topic).split("/")[-2]
+                    for suffix in ENTITY_SUFFIXES:
+                        if msg.payload and object_id.endswith(suffix):
+                            found.add(object_id.removesuffix(suffix))
+        except TimeoutError:
+            pass
+        finally:
+            await client.unsubscribe(topic)
+        return found
 
     async def send(self, messages: list[Message]) -> None:
         """Publish all messages; reconnect once if the broker dropped us."""

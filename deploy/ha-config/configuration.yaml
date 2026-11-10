@@ -3,9 +3,9 @@ default_config:
 
 lovelace:
   dashboards:
-    cripto-4h:
+    senales-cripto:
       mode: yaml
-      title: Cripto 4H
+      title: Señales cripto
       icon: mdi:chart-line
       show_in_sidebar: true
       filename: dashboards/ha_trading_helper.yaml

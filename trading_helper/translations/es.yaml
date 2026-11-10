@@ -1,12 +1,18 @@
 configuration:
+  quote_currency:
+    name: Moneda de cotización
+    description: Moneda contra la que se analizan los pares (p. ej. SOL-USDC). BTC en esta moneda es la referencia de mercado.
+  bar:
+    name: Temporalidad de vela
+    description: Duración de cada vela. Se analiza al cierre de cada una (en UTC) y la validación se calcula aparte para cada temporalidad.
   pairs:
     name: Pares
-    description: Lista fija de pares (p. ej. BTC-USDT). Vacío = los más líquidos de OKX.
+    description: Lista fija de pares (p. ej. BTC-USDC). Vacío = los más líquidos de OKX en la moneda de cotización.
   max_pairs:
     name: Máximo de pares
     description: Tamaño del universo automático.
   min_volume_24h_usdt:
-    name: Volumen mínimo 24 h (USDT)
+    name: Volumen mínimo 24 h (USD equivalentes)
     description: Filtro de liquidez del universo automático.
   enter_threshold:
     name: Umbral de entrada

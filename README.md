@@ -1,7 +1,7 @@
 # HA Trading Helper
 
-Asesor de señales cripto **explicables** para Home Assistant. Al cerrar cada vela de 4 h
-puntúa los pares spot más líquidos de OKX con indicadores técnicos clásicos, publica el
+Asesor de señales cripto **explicables** para Home Assistant. Al cerrar cada vela (4 h por
+defecto) puntúa los pares spot más líquidos de OKX con indicadores técnicos clásicos, publica el
 resultado en Home Assistant por MQTT Discovery y explica punto a punto en qué se basa cada
 señal.
 
@@ -10,7 +10,7 @@ señal.
 > los resultados pasados no garantizan los futuros.
 
 ```text
-SOL-USDT · ENTRAR · puntuación 85/100 · vela 2026-11-10 16:00 UTC
+SOL-USDC · ENTRAR · puntuación 85/100 · vela 2026-11-10 16:00 UTC
 Motivos:
   +25  Tendencia: alcista, cierre 188,4 > EMA50 181,2 > EMA200 160,7
   +20  MACD: histograma pasa de -0,31 a 0,12
@@ -25,10 +25,12 @@ Validación: Fuera de muestra: 34 % aciertos, esperanza +0,04R tras costes (n=35
 
 ## Cómo funciona
 
-1. **Universo**: pares `-USDT` de OKX con volumen 24 h ≥ 5 M USDT y spread ≤ 0,2 %, sin
-   stablecoins ni acciones tokenizadas (o una lista fija de pares).
-2. **Datos**: velas de 4 h de los endpoints públicos de OKX v5, solo velas cerradas
-   (`confirm=1`), caché incremental en Parquet.
+1. **Universo**: pares de OKX en la moneda de cotización elegida (USDC por defecto; también
+   USDT o EUR) con volumen 24 h ≥ 5 M USD y spread ≤ 0,2 %, sin stablecoins ni acciones
+   tokenizadas (o una lista fija de pares). BTC en esa moneda es la referencia de mercado.
+2. **Datos**: velas de los endpoints públicos de OKX v5 (4 h por defecto; configurable entre
+   1 h y 1 día, siempre alineadas a UTC), solo velas cerradas (`confirm=1`), caché incremental
+   en Parquet.
 3. **Puntuación 0-100** sumando evidencias (pesos configurables):
 
    | Evidencia | Condición | Puntos |
@@ -62,7 +64,7 @@ Todas bajo el dispositivo **HA Trading Helper**:
 | `binary_sensor.ha_trading_helper_<par>_entrada` | on si ENTRAR | |
 | `sensor.ha_trading_helper_estado` | ok / degradada / error | última vela, errores, validación |
 
-El panel **Cripto 4H** ([dashboards/ha_trading_helper.yaml](dashboards/ha_trading_helper.yaml))
+El panel **Señales cripto** ([dashboards/ha_trading_helper.yaml](dashboards/ha_trading_helper.yaml))
 usa solo tarjetas estándar, y hay una automatización de ejemplo que avisa al móvil cuando un
 par pasa a ENTRAR o SALIR ([dashboards/automations/](dashboards/automations/)).
 
@@ -75,8 +77,8 @@ stack completo.
 uv sync                                   # dependencias
 make check                                # lint + tipos + tests + auditoría
 uv run ha-trading-helper scan             # ranking con motivos (sin Home Assistant)
-uv run ha-trading-helper backtest --pair SOL-USDT --years 2 --trades
-uv run ha-trading-helper validate --years 2   # walk-forward -> .data/validation.json
+uv run ha-trading-helper backtest --pair SOL-USDC --years 2 --trades
+uv run ha-trading-helper validate --years 2   # walk-forward -> .data/validation-usdc-4h.json
 ```
 
 Stack completo (Mosquitto + Home Assistant + la app):
@@ -96,15 +98,15 @@ Home Assistant, desde la pestaña de configuración de la app.
 make app-bundle          # crea dist/ha_trading_helper/
 ```
 
-1. Copia `dist/ha_trading_helper/` a la carpeta `/addons/` de Home Assistant (Samba o SSH).
+1. Copia `dist/ha_trading_helper/` a la carpeta de apps locales de Home Assistant: `/addons/` (Samba) o `/local_apps/` por SSH en versiones recientes.
 2. *Ajustes → Apps → Tienda de apps → ⋮ → Buscar actualizaciones*; aparece en *Apps locales*.
 3. Instala, revisa las opciones y arranca. Necesita la app **Mosquitto broker** y la
    integración MQTT; las credenciales se obtienen solas del Supervisor.
 4. Copia `dashboards/ha_trading_helper.yaml` como panel nuevo (modo YAML o pegándolo en el
    editor en bruto) y adapta `notify.notify` en la automatización de ejemplo.
 
-Al arrancar hace un ciclo, lo repite tras cada cierre de vela de 4 h (00, 04, 08, 12, 16 y
-20 UTC + 1 min) y recalcula la validación cada domingo (o al arrancar si falta o tiene más de
+Al arrancar hace un ciclo, lo repite tras cada cierre de vela (con 4 h: 00, 04, 08, 12, 16
+y 20 UTC + 1 min) y recalcula la validación cada domingo (o al arrancar si falta o tiene más de
 7 días; la primera descarga de 2 años de histórico tarda unos minutos).
 
 ## Desarrollo

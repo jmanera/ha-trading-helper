@@ -9,12 +9,13 @@ import numpy as np
 import pandas as pd
 import pytest
 import respx
+from pydantic import ValidationError
 
 from ha_trading_helper.config import HaOptionsSource, Position, Settings
 from ha_trading_helper.data.store import CandleStore, candles_to_frame
 from ha_trading_helper.okx.client import BASE_URL, OkxClient
 from ha_trading_helper.okx.models import Candle
-from ha_trading_helper.service import SignalLog, scan
+from ha_trading_helper.service import SignalLog, scan, validation_path
 from ha_trading_helper.strategy.signal import Action
 from tests.conftest import make_candles, uptrend_with_pullback
 
@@ -77,6 +78,7 @@ def frames() -> dict[str, pd.DataFrame]:
 
 
 def settings(tmp_path: Path, **kw: object) -> Settings:
+    kw.setdefault("quote_currency", "USDT")
     return Settings(_env_file=None, data_dir=tmp_path, min_volume_24h_usdt=1, **kw)  # type: ignore[call-arg]
 
 
@@ -179,7 +181,7 @@ def test_signal_log_records_changes(tmp_path: Path, frames: dict[str, pd.DataFra
 def test_settings_from_ha_options(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     options = tmp_path / "options.json"
     options.write_text(json.dumps({
-        "pairs": ["BTC-USDT"], "enter_threshold": 75, "mqtt_username": "",
+        "pairs": ["BTC-USDT"], "enter_threshold": 75, "mqtt_username": "", "quote_currency": "EUR",
         "weights": {"trend": 30, "momentum": 15, "rsi": 15, "breakout": 15, "volume": 10,
                     "relative_strength": 15},
     }))  # fmt: skip
@@ -191,5 +193,32 @@ def test_settings_from_ha_options(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     assert s.mqtt_username is None
     assert s.weights.trend == 30 and s.weights.total() == 100
     assert s.max_pairs == 7
+    assert s.quote_currency == "EUR" and s.benchmark == "BTC-EUR"
     monkeypatch.setattr(HaOptionsSource, "path", tmp_path / "missing.json")
     assert Settings(_env_file=None).pairs == []  # type: ignore[call-arg]
+
+
+def test_quote_currency_drives_benchmark_and_validation_file(tmp_path: Path) -> None:
+    s = Settings(_env_file=None, data_dir=tmp_path)  # type: ignore[call-arg]
+    assert s.quote_currency == "USDC" and s.benchmark == "BTC-USDC"
+    assert validation_path(s) == tmp_path / "validation-usdc-4h.json"
+    eur = Settings(_env_file=None, data_dir=tmp_path, quote_currency="EUR", bar="1D")  # type: ignore[call-arg]
+    assert eur.benchmark == "BTC-EUR" and validation_path(eur).name == "validation-eur-1d.json"
+    custom = Settings(_env_file=None, quote_currency="EUR", benchmark="ETH-EUR")  # type: ignore[call-arg]
+    assert custom.benchmark == "ETH-EUR"
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, quote_currency="DOGE")  # type: ignore[call-arg]
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, bar="3H")  # type: ignore[call-arg]
+
+
+@respx.mock
+async def test_automatic_universe_uses_only_the_quote_currency(
+    tmp_path: Path, frames: dict[str, pd.DataFrame]
+) -> None:
+    frames = frames | {"BTC-USDC": frames["BTC-USDT"], "SOL-USDC": frames["SOL-USDT"]}
+    mock_okx(frames)
+    async with OkxClient(sleep=no_sleep) as client:
+        result = await scan(settings(tmp_path, quote_currency="USDC"), client)
+    assert set(result.universe) == {"SOL-USDC", "BTC-USDC"}
+    assert not result.errors

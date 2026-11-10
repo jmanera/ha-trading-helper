@@ -1,9 +1,9 @@
-# "Cripto 4H" dashboard: four standard cards, no custom components.
+# "Señales cripto" dashboard: four standard cards, no custom components.
 # Entity ids assume the default base topic "ha_trading_helper".
-title: Cripto 4H
+title: Señales cripto
 views:
-  - title: Cripto 4H
-    path: cripto-4h
+  - title: Señales cripto
+    path: senales
     icon: mdi:chart-line
     cards:
       - type: markdown

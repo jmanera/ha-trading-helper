@@ -1,7 +1,7 @@
 # Local stack: Mosquitto + Home Assistant + the app, no Supervisor needed.
 # First run: open http://localhost:8123, finish onboarding and add the MQTT
 # integration with broker "mosquitto" (HA no longer accepts it from YAML).
-# The "Cripto 4H" dashboard is loaded from dashboards/ in YAML mode.
+# The "Señales cripto" dashboard is loaded from dashboards/ in YAML mode.
 services:
   mosquitto:
     image: eclipse-mosquitto:2

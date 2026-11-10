@@ -56,7 +56,7 @@ async def test_cycle_publishes_discovery_and_states(
     host, port = broker.get_container_host_ip(), int(broker.get_exposed_port(1883))
     settings = Settings(  # type: ignore[call-arg]
         _env_file=None, data_dir=tmp_path, mqtt_host=host, mqtt_port=port, min_volume_24h_usdt=1,
-        base_topic="hth_test",
+        base_topic="hth_test", quote_currency="USDT",
     )  # fmt: skip
     runner = Runner(settings)
     await runner.cycle()
@@ -82,6 +82,20 @@ async def test_cycle_publishes_discovery_and_states(
     status = await retained(host, port, "hth_test/status", 1)
     assert status["hth_test/status"] == "offline"
     assert (tmp_path / "signals.jsonl").is_file()
+
+
+async def test_retained_pairs_lists_earlier_discovery_configs(
+    broker: DockerContainer, tmp_path: Path
+) -> None:
+    from ha_trading_helper.publish.mqtt import MqttPublisher
+    from ha_trading_helper.publish.payloads import discovery_messages
+
+    host, port = broker.get_container_host_ip(), int(broker.get_exposed_port(1883))
+    settings = Settings(_env_file=None, mqtt_host=host, mqtt_port=port, base_topic="hth_rp")  # type: ignore[call-arg]
+    async with MqttPublisher(settings) as pub:
+        await pub.send(discovery_messages(["SOL-USDT", "ADA-USDC"], "hth_rp", "homeassistant"))
+    async with MqttPublisher(settings) as pub:
+        assert await pub.retained_pairs(wait=1.0) == {"sol_usdt", "ada_usdc"}
 
 
 async def test_publisher_reconnects_after_broker_drop(

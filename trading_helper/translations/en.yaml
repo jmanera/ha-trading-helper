@@ -1,11 +1,17 @@
 configuration:
+  quote_currency:
+    name: Quote currency
+    description: Currency the pairs are quoted in (e.g. SOL-USDC). BTC in this currency is the market benchmark.
+  bar:
+    name: Candle timeframe
+    description: Length of each candle. Pairs are analysed when each one closes (UTC) and the validation is computed separately per timeframe.
   pairs:
     name: Pairs
-    description: Fixed list of pairs (e.g. BTC-USDT). Empty = most liquid OKX pairs.
+    description: Fixed list of pairs (e.g. BTC-USDC). Empty = most liquid OKX pairs in the quote currency.
   max_pairs:
     name: Max pairs
   min_volume_24h_usdt:
-    name: Min 24h volume (USDT)
+    name: Min 24h volume (USD equivalent)
   enter_threshold:
     name: Entry threshold
   wait_threshold:
