@@ -158,6 +158,17 @@ def test_no_look_ahead_in_scores(bull: pd.DataFrame) -> None:
         assert sig.score == int(full["score"].iloc[cut - 1])
 
 
+def test_trend_is_required_to_enter(flat: pd.DataFrame) -> None:
+    """Points from the other evidences never open an entry below the trend."""
+    features = compute_features(flat, None)
+    no_trend = Weights(trend=0, momentum=20, rsi=15, breakout=15, volume=10, relative_strength=40)
+    scored = score_frame(features, no_trend, min_history=250, enter_threshold=1)
+    assert (scored["enter"] <= scored["trend_ok"]).all()
+    below_trend = scored["history_ok"] & scored["market_ok"] & ~scored["trend_ok"]
+    assert (below_trend & (scored["score"] >= 1)).any()
+    assert not scored.loc[below_trend, "enter"].any()
+
+
 def test_benchmark_relative_strength(bull: pd.DataFrame, flat: pd.DataFrame) -> None:
     sig = build_signal("SOL-USDT", bull, flat, settings())
     assert sig is not None

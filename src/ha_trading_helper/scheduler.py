@@ -23,7 +23,7 @@ from ha_trading_helper.okx.client import OkxClient
 from ha_trading_helper.okx.trade import OkxTradeClient
 from ha_trading_helper.publish import payloads
 from ha_trading_helper.publish.mqtt import MqttPublisher, serve_requests
-from ha_trading_helper.service import SignalLog, load_history, scan, validation_path
+from ha_trading_helper.service import SignalLog, load_validation_history, scan, validation_path
 from ha_trading_helper.strategy.signal import Signal
 from ha_trading_helper.timeframe import close_hours
 from ha_trading_helper.trading.executor import Executor
@@ -127,7 +127,7 @@ class Runner:
         s = self.settings
         log.info("validation_started", years=VALIDATION_YEARS)
         async with OkxClient() as client:
-            data, benchmark = await load_history(s, client, list(s.pairs), VALIDATION_YEARS)
+            history = await load_validation_history(s, client, VALIDATION_YEARS)
         params = EngineParams(
             enter_threshold=s.enter_threshold,
             min_history=s.min_history,
@@ -137,15 +137,18 @@ class Runner:
         )
         result = await asyncio.to_thread(
             walk_forward,
-            data,
-            benchmark,
+            history.data,
+            history.benchmark,
             params,
             CostModel(s.fee_pct, s.slippage_pct),
             max_positions=s.max_positions,
+            members=history.members,
         )
         save_report(result, validation_path(s))
         v = result.to_validation()
-        log.info("validation_done", text=v.text(), positive=v.positive)
+        log.info(
+            "validation_done", text=v.text(), positive=v.positive, universe=history.universe_text
+        )
 
     async def safe_revalidate(self, *, only_if_stale: bool = False) -> None:
         try:

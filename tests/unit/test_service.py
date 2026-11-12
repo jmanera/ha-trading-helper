@@ -13,9 +13,10 @@ from pydantic import ValidationError
 
 from ha_trading_helper.config import HaOptionsSource, Position, Settings
 from ha_trading_helper.data.store import CandleStore, candles_to_frame
+from ha_trading_helper.data.universe import historical_membership, is_candidate
 from ha_trading_helper.okx.client import BASE_URL, OkxClient
 from ha_trading_helper.okx.models import Candle
-from ha_trading_helper.service import SignalLog, scan, validation_path
+from ha_trading_helper.service import SignalLog, load_validation_history, scan, validation_path
 from ha_trading_helper.strategy.signal import Action
 from tests.conftest import make_candles, uptrend_with_pullback
 
@@ -222,3 +223,69 @@ async def test_automatic_universe_uses_only_the_quote_currency(
         result = await scan(settings(tmp_path, quote_currency="USDC"), client)
     assert set(result.universe) == {"SOL-USDC", "BTC-USDC"}
     assert not result.errors
+
+
+def test_is_candidate() -> None:
+    assert is_candidate("SOL-USDT", "USDT")
+    assert not is_candidate("SOL-USDC", "USDT")
+    assert not is_candidate("USDC-USDT", "USDT")
+
+
+def test_historical_membership_uses_only_past_volume() -> None:
+    idx = pd.date_range("2025-01-01", periods=6, freq="4h", tz="UTC")
+    vols = {
+        "A-USDT": [10, 10, 10, 1, 1, 1],
+        "B-USDT": [5, 5, 5, 20, 20, 20],
+        "C-USDT": [1, 1, 1, 1, 1, 1],
+    }
+    frames = {k: pd.DataFrame({"volume_quote": v}, index=idx, dtype=float) for k, v in vols.items()}
+    members = historical_membership(
+        frames, max_pairs=1, min_daily_volume=2, window_bars=2, bars_per_day=1
+    )
+    assert not members.iloc[0].any()  # window not full yet
+    assert members["A-USDT"].tolist() == [False, True, True, False, False, False]
+    # B overtakes A once its last two bars average more: never earlier.
+    assert members["B-USDT"].tolist() == [False, False, False, True, True, True]
+    assert not members["C-USDT"].any()  # below the volume floor
+    cut = historical_membership(
+        {k: f.iloc[:4] for k, f in frames.items()},
+        max_pairs=1, min_daily_volume=2, window_bars=2, bars_per_day=1,
+    )  # fmt: skip
+    assert cut.equals(members.iloc[:4])
+    assert historical_membership(
+        {}, max_pairs=1, min_daily_volume=0, window_bars=1, bars_per_day=1
+    ).empty
+
+
+@respx.mock
+async def test_validation_history_rebuilds_the_universe(
+    tmp_path: Path, frames: dict[str, pd.DataFrame]
+) -> None:
+    frames = frames | {"USDC-USDT": frames["XRP-USDT"], "SOL-USDC": frames["SOL-USDT"]}
+    mock_okx(frames)
+    async with OkxClient(sleep=no_sleep) as client:
+        hist = await load_validation_history(settings(tmp_path, max_pairs=2), client, 0.1)
+        fixed = await load_validation_history(settings(tmp_path), client, 0.1, pairs=["SOL-USDT"])
+    assert hist.members is not None
+    assert set(hist.data) <= {"BTC-USDT", "SOL-USDT", "XRP-USDT"}
+    assert set(hist.members.columns) == set(hist.data)
+    assert (hist.members.sum(axis=1) <= 2).all()
+    assert "histórico" in hist.universe_text
+    assert fixed.members is None and list(fixed.data) == ["SOL-USDT"]
+    assert fixed.universe_text == "1 pares fijos"
+
+
+@respx.mock
+async def test_validation_history_in_eur_converts_volume(
+    tmp_path: Path, frames: dict[str, pd.DataFrame]
+) -> None:
+    eur = {
+        "BTC-EUR": frames["BTC-USDT"],
+        "SOL-EUR": frames["SOL-USDT"],
+        "EUR-USDT": frames["XRP-USDT"],
+    }
+    mock_okx(eur)
+    s = Settings(_env_file=None, data_dir=tmp_path, quote_currency="EUR", min_volume_24h_usdt=1e12)  # type: ignore[call-arg]
+    async with OkxClient(sleep=no_sleep) as client:
+        hist = await load_validation_history(s, client, 0.1)
+    assert hist.data == {}  # nothing reaches the volume floor

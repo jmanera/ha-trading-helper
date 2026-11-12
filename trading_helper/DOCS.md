@@ -20,6 +20,10 @@ asesoramiento financiero.
 - Cada domingo recalcula la validación walk-forward con 2 años de histórico. Mientras la
   estrategia no sea rentable fuera de muestra tras costes, los ENTRAR son informativos
   (`alerta: false`).
+- Con el universo automático, la validación usa el universo que habría habido en cada fecha
+  (los pares más líquidos de entonces, no los de hoy). Para eso descarga el histórico de todos
+  los pares de la moneda de cotización: la primera vez tarda unos 30 minutos y ocupa unas
+  decenas de MB en `/data`; después solo descarga las velas nuevas.
 
 ## Opciones
 

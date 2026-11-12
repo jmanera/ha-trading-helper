@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+import pandas as pd
+
 from ha_trading_helper.okx.models import Ticker
 
 # Pegged / wrapped assets whose price does not trend on its own.
@@ -49,3 +51,35 @@ def select_universe(
         picked.append((volume_usdt, t.inst_id))
     picked.sort(reverse=True)
     return [inst for _, inst in picked[: rules.max_pairs]]
+
+
+def is_candidate(inst_id: str, quote: str) -> bool:
+    """A pair that could ever enter the automatic universe: right quote, not pegged."""
+    base, _, q = inst_id.partition("-")
+    return q == quote and base not in STABLE_BASES
+
+
+def historical_membership(
+    frames: dict[str, pd.DataFrame],
+    *,
+    max_pairs: int,
+    min_daily_volume: float,
+    window_bars: int,
+    bars_per_day: float,
+    volume_factor: float = 1.0,
+) -> pd.DataFrame:
+    """Which pairs were in the universe at each bar, using only volume known by then.
+
+    A pair is a member at bar t when its mean quote volume over the last
+    ``window_bars`` bars (scaled to a day, times ``volume_factor`` to get USDT) is
+    at least ``min_daily_volume`` and among the ``max_pairs`` largest at t.
+    Validating with today's most liquid pairs instead would only test the coins
+    that did well enough to be liquid now (survivorship bias).
+    """
+    if not frames:
+        return pd.DataFrame(dtype=bool)
+    volume = pd.DataFrame({k: f["volume_quote"] for k, f in frames.items()}).sort_index()
+    daily = volume.rolling(window_bars, min_periods=window_bars).mean()
+    daily = daily * bars_per_day * volume_factor
+    rank = daily.rank(axis=1, ascending=False, method="first")
+    return (rank <= max_pairs) & (daily >= min_daily_volume)

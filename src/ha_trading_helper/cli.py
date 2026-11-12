@@ -16,7 +16,13 @@ from ha_trading_helper.backtest.metrics import Metrics, compute_metrics
 from ha_trading_helper.backtest.walkforward import save_report, walk_forward
 from ha_trading_helper.config import Settings
 from ha_trading_helper.okx.client import OkxClient
-from ha_trading_helper.service import load_history, scan, validation_path
+from ha_trading_helper.service import (
+    ValidationHistory,
+    load_history,
+    load_validation_history,
+    scan,
+    validation_path,
+)
 
 app = typer.Typer(no_args_is_help=True, add_completion=False, help=__doc__)
 
@@ -106,6 +112,19 @@ async def _load_history(
         )
 
 
+async def _load_validation_history(
+    settings: Settings, pairs: list[str], years: float
+) -> ValidationHistory:
+    async with OkxClient() as client:
+        return await load_validation_history(
+            settings,
+            client,
+            years,
+            pairs=pairs,
+            progress=lambda p: typer.echo(f"  datos {p} ...", err=True),
+        )
+
+
 @app.command()
 def backtest(
     pair: Annotated[list[str] | None, typer.Option(help="Pair(s); default = universe")] = None,
@@ -139,14 +158,16 @@ def validate(
 ) -> None:
     """Walk-forward validation; writes validation-<quote>-<bar>.json used by live signals."""
     settings = _settings()
-    data, benchmark = asyncio.run(_load_history(settings, pair or [], years))
+    history = asyncio.run(_load_validation_history(settings, pair or [], years))
+    typer.echo(f"Universo: {history.universe_text}")
     result = walk_forward(
-        data,
-        benchmark,
+        history.data,
+        history.benchmark,
         _engine_params(settings),
         CostModel(settings.fee_pct, settings.slippage_pct),
         folds=folds,
         max_positions=settings.max_positions,
+        members=history.members,
     )
     for th, m in result.full_sample.items():
         _print_metrics(f"Muestra completa umbral {th}", m)

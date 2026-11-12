@@ -69,6 +69,15 @@ def history_ok(f: pd.DataFrame, min_history: int) -> pd.Series:
     return (f["bars"] >= min_history) & f["ema200"].notna()
 
 
+def trend_ok(f: pd.DataFrame) -> pd.Series:
+    """Entry filter: the trend evidence is required, not just a source of points.
+
+    Without it the other evidences alone can reach the threshold (75 of 100 with
+    the default weights) and enter below the EMA 200.
+    """
+    return _trend(f)
+
+
 def market_ok(f: pd.DataFrame) -> pd.Series:
     """Market filter: the benchmark (BTC) closes above its EMA 200."""
     return f["btc_close"] > f["btc_ema200"]

@@ -15,7 +15,12 @@ import structlog
 from ha_trading_helper.backtest.walkforward import load_validation
 from ha_trading_helper.config import Settings
 from ha_trading_helper.data.store import CandleStore
-from ha_trading_helper.data.universe import UniverseRules, select_universe
+from ha_trading_helper.data.universe import (
+    UniverseRules,
+    historical_membership,
+    is_candidate,
+    select_universe,
+)
 from ha_trading_helper.okx.client import OkxClient, OkxError
 from ha_trading_helper.publish import payloads
 from ha_trading_helper.strategy.signal import Action, Signal, build_signal
@@ -26,6 +31,8 @@ log = structlog.get_logger(__name__)
 # Enough for EMA 200 warm-up plus a margin.
 LIVE_HISTORY = 300
 CONCURRENCY = 4
+# Liquidity of the historical universe: mean daily volume over this many days.
+HISTORICAL_VOLUME_DAYS = 30
 
 
 @dataclass
@@ -123,17 +130,77 @@ async def load_history(
     if not pairs:
         pairs = await resolve_universe(settings, client)
     benchmark = await store.sync(client, settings.benchmark, settings.bar, count=count)
-    data: dict[str, pd.DataFrame] = {}
-    for pair in pairs:
-        if progress:
-            progress(pair)
-        try:
-            frame = await store.sync(client, pair, settings.bar, count=count)
-        except OkxError as exc:
-            log.warning("history_failed", pair=pair, error=str(exc))
-            continue
-        data[pair] = frame.iloc[-count:]
+    semaphore = asyncio.Semaphore(CONCURRENCY)
+
+    async def fetch(pair: str) -> tuple[str, pd.DataFrame | None]:
+        async with semaphore:
+            if progress:
+                progress(pair)
+            try:
+                return pair, await store.sync(client, pair, settings.bar, count=count)
+            except OkxError as exc:
+                log.warning("history_failed", pair=pair, error=str(exc))
+                return pair, None
+
+    frames = await asyncio.gather(*(fetch(p) for p in pairs))
+    data = {pair: frame.iloc[-count:] for pair, frame in frames if frame is not None}
     return data, benchmark.iloc[-count:]
+
+
+@dataclass
+class ValidationHistory:
+    data: dict[str, pd.DataFrame]
+    benchmark: pd.DataFrame
+    members: pd.DataFrame | None  # universe at each bar; None = fixed pairs
+
+    @property
+    def universe_text(self) -> str:
+        if self.members is None:
+            return f"{len(self.data)} pares fijos"
+        return f"histórico, {len(self.data)} pares han estado en el universo"
+
+
+async def load_validation_history(
+    settings: Settings,
+    client: OkxClient,
+    years: float,
+    *,
+    pairs: list[str] | None = None,
+    progress: Callable[[str], None] | None = None,
+) -> ValidationHistory:
+    """History for the walk-forward.
+
+    Fixed pairs (``pairs`` or ``settings.pairs``) are validated as they are. The
+    automatic universe is rebuilt bar by bar from every candidate pair OKX lists
+    today, so a pair only trades while it was among the most liquid; pairs OKX has
+    delisted cannot be downloaded, so a little survivorship bias remains.
+    """
+    fixed = pairs or list(settings.pairs)
+    if fixed:
+        data, benchmark = await load_history(settings, client, fixed, years, progress=progress)
+        return ValidationHistory(data, benchmark, None)
+    instruments = await client.instruments("SPOT")
+    candidates = sorted(
+        i.inst_id
+        for i in instruments
+        if i.is_crypto_live and is_candidate(i.inst_id, settings.quote_currency)
+    )
+    factor = 1.0
+    if settings.quote_currency == "EUR":
+        tickers = await client.tickers("SPOT")
+        factor = next((t.last for t in tickers if t.inst_id == "EUR-USDT"), None) or 1.0
+    data, benchmark = await load_history(settings, client, candidates, years, progress=progress)
+    per_day = bars_per_year(settings.bar) / 365
+    members = historical_membership(
+        data,
+        max_pairs=settings.max_pairs,
+        min_daily_volume=settings.min_volume_24h_usdt,
+        window_bars=max(1, round(HISTORICAL_VOLUME_DAYS * per_day)),
+        bars_per_day=per_day,
+        volume_factor=factor,
+    )
+    ever = [p for p in members.columns if bool(members[p].any())]
+    return ValidationHistory({p: data[p] for p in ever}, benchmark, members[ever])
 
 
 class SignalLog:

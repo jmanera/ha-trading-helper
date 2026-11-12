@@ -51,6 +51,12 @@ Validación: Fuera de muestra: 34 % aciertos, esperanza +0,04R tras costes (n=35
 6. **Validación**: un backtest walk-forward con las **mismas reglas**, comisiones y
    deslizamiento. Un `ENTRAR` solo cuenta como *alerta* si la estrategia fue rentable fuera de
    muestra (n ≥ 30, esperanza > 0, factor de beneficio ≥ 1,1). Si no, la señal es informativa.
+   Con el universo automático, la validación lo reconstruye **vela a vela**: descarga todos
+   los pares de la moneda de cotización y en cada vela solo deja entrar a los `max_pairs` con
+   más volumen medio de los 30 días anteriores (y al menos `min_volume_24h_usdt` al día). Así
+   no se valida solo con las monedas que hoy son líquidas porque subieron (sesgo de
+   supervivencia). Los pares que OKX ya retiró no se pueden descargar, así que queda algo de
+   sesgo. Con `pairs` fijos se validan esos pares tal cual.
 
 Resultados actuales: [docs/validation.md](docs/validation.md). Decisiones de diseño:
 [docs/adr/](docs/adr/).
