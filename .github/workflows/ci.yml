@@ -65,6 +65,14 @@ jobs:
           python-version: "3.12"
           enable-cache: true
       - run: uv sync --frozen --no-dev
+      # The validation downloads every candidate pair (the historical universe):
+      # keep the candles between runs so only new ones are fetched. A cache entry
+      # is immutable, so each run saves a new one and restores the latest.
+      - uses: actions/cache@v4
+        with:
+          path: .data/candles
+          key: candles-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: candles-${{ runner.os }}-
       - name: Walk-forward validation on live OKX data
         env:
           HTH_DATA_DIR: .data
