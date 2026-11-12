@@ -33,15 +33,27 @@
              else trigger.event.data.new_state.attributes }}
         titulo: "{{ '[Prueba] ' if prueba }}{{ a.par }}: {{ a.accion }} ({{ a.puntuacion }}/100)"
         texto: >-
-          {% if a.accion == 'SALIR' %}{{ a.salida }}{% else %}
-          {%- for m in (a.motivos | selectattr('p', 'gt', 0) | sort(attribute='p', reverse=true))[:3] -%}
-          +{{ m.p }} {{ m.e }}: {{ m.d }}{{ '\n' }}
-          {%- endfor -%}
-          {{ a.resumen_niveles | default('') }}{% endif %}
-          {{ '' if a.alerta else '\n(informativa: estrategia sin validar)' }}
+          {% for p in a.explicacion | default([]) -%}
+          {{ p.i }} {{ p.t }}{{ ': ' ~ p.d if p.d }}{{ '\n' }}
+          {%- endfor %}
         boton: >-
           {% if a.accion == 'SALIR' %}Vender:/hth sell {{ a.par }}
           {%- elif a.accion == 'ENTRAR' or prueba %}Comprar:/hth buy {{ a.par }}{% endif %}
+    # Chart of the best opportunity, when the notice is about it. Telegram downloads
+    # it from Home Assistant: change ha_url if HA is not reachable on that address.
+    - variables:
+        ha_url: "http://127.0.0.1:8123"
+        img: image.ha_trading_helper_mejor_oportunidad_grafico
+    - if: >-
+        {{ a.par == states('sensor.ha_trading_helper_mejor_oportunidad')
+           and state_attr(img, 'entity_picture') is not none }}
+      then:
+        - delay: 3  # let the chart of this cycle arrive
+        - action: telegram_bot.send_photo
+          continue_on_error: true
+          data:
+            url: "{{ ha_url ~ state_attr(img, 'entity_picture') }}"
+            caption: "{{ titulo }}"
     - if: "{{ boton | length > 0 }}"
       then:
         - action: telegram_bot.send_message

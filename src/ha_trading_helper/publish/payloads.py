@@ -5,6 +5,7 @@ All entities hang from one device "HA Trading Helper". Topics::
     <base>/status                      availability (online/offline, retained)
     <base>/system/state|attributes     health sensor
     <base>/best/state|attributes       best opportunity
+    <base>/best/chart                  PNG chart of the best opportunity (image entity)
     <base>/<slug>/state|attributes     per-pair score (attributes carry the reasons)
     <base>/<slug>/entry                ON/OFF entry flag
 """
@@ -17,8 +18,9 @@ from datetime import datetime
 from typing import Any
 
 from ha_trading_helper import __version__
+from ha_trading_helper.strategy.actions import Action
 from ha_trading_helper.strategy.explain import fmt
-from ha_trading_helper.strategy.signal import Action, Signal
+from ha_trading_helper.strategy.signal import Signal
 
 MAX_ATTRIBUTES_BYTES = 4096
 ICONS = {Action.ENTER: "mdi:arrow-up-bold-circle", Action.WAIT: "mdi:pause-circle",
@@ -28,7 +30,7 @@ ICONS = {Action.ENTER: "mdi:arrow-up-bold-circle", Action.WAIT: "mdi:pause-circl
 @dataclass(frozen=True)
 class Message:
     topic: str
-    payload: str
+    payload: str | bytes
     retain: bool = True
 
 
@@ -78,6 +80,11 @@ def discovery_messages(pairs: list[str], base: str, prefix: str) -> list[Message
             state_topic=f"{base}/best/state",
             json_attributes_topic=f"{base}/best/attributes",
             icon="mdi:trophy",
+        ),
+        _config(
+            "image", "mejor_oportunidad_grafico", "Mejor oportunidad gráfico", base, prefix,
+            image_topic=f"{base}/best/chart", content_type="image/png",
+            icon="mdi:chart-box",
         ),
     ]  # fmt: skip
     for pair in pairs:
@@ -129,6 +136,8 @@ def signal_attributes(sig: Signal, wait_threshold: int = 40) -> dict[str, Any]:
         "mercado": sig.market,
         "mercado_ok": sig.market_ok,
         "validacion": sig.validation.text() if sig.validation else "Sin backtest aún",
+        # Plain explanation: icon, bold title, text (see strategy/plain.py).
+        "explicacion": [{"i": p.icon, "t": p.title, "d": p.text} for p in sig.explanation],
     }
     if sig.exit_reason:
         attrs["salida"] = sig.exit_reason
@@ -206,3 +215,7 @@ def state_messages(
     msgs.append(Message(f"{base}/system/state", health))
     msgs.append(Message(f"{base}/system/attributes", json.dumps(system)))
     return msgs
+
+
+def chart_message(png: bytes, base: str) -> Message:
+    return Message(f"{base}/best/chart", png)

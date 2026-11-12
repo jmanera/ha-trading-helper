@@ -35,13 +35,23 @@ def broker() -> object:
         yield container
 
 
-async def retained(host: str, port: int, topic: str, count: int) -> dict[str, str]:
-    got: dict[str, str] = {}
+def _text(payload: object) -> str | bytes:
+    """Text payloads as str; binary ones (the PNG chart) stay bytes."""
+    if not isinstance(payload, bytes):
+        return ""
+    try:
+        return payload.decode()
+    except UnicodeDecodeError:
+        return payload
+
+
+async def retained(host: str, port: int, topic: str, count: int) -> dict[str, str | bytes]:
+    got: dict[str, str | bytes] = {}
     async with aiomqtt.Client(host, port, identifier="test-reader") as client:
         await client.subscribe(topic)
         async with asyncio.timeout(10):
             async for msg in client.messages:
-                got[str(msg.topic)] = msg.payload.decode() if isinstance(msg.payload, bytes) else ""
+                got[str(msg.topic)] = _text(msg.payload)
                 if len(got) >= count:
                     break
     return got
@@ -61,23 +71,27 @@ async def test_cycle_publishes_discovery_and_states(
     runner = Runner(settings)
     await runner.cycle()
 
-    configs = await retained(host, port, "homeassistant/+/hth_test/+/config", 2 + 2 * 3)
+    configs = await retained(host, port, "homeassistant/+/hth_test/+/config", 3 + 2 * 3)
     score_cfg = json.loads(configs["homeassistant/sensor/hth_test/sol_usdt_puntuacion/config"])
     assert score_cfg["state_topic"] == "hth_test/sol_usdt/state"
+    assert "homeassistant/image/hth_test/mejor_oportunidad_grafico/config" in configs
 
-    states = await retained(host, port, "hth_test/#", 1 + 2 * 2 + 3 * 3)
+    # status, system and best (state + attributes), the chart, 3 topics per pair.
+    states = await retained(host, port, "hth_test/#", 1 + 2 * 2 + 1 + 3 * 3)
     assert states["hth_test/status"] == "online"
     assert states["hth_test/system/state"] == "ok"
     assert states["hth_test/best/state"] == "SOL-USDT"
     assert states["hth_test/sol_usdt/entry"] == "ON"
     attrs = json.loads(states["hth_test/sol_usdt/attributes"])
-    assert attrs["accion"] == "ENTRAR" and attrs["motivos"]
+    assert attrs["accion"] == "ENTRAR" and attrs["motivos"] and attrs["explicacion"]
+    chart = states["hth_test/best/chart"]
+    assert isinstance(chart, bytes) and chart.startswith(b"\x89PNG")
 
     # A pair leaving the universe gets its entities removed.
     runner.settings = settings.model_copy(update={"pairs": ["SOL-USDT", "BTC-USDT"]})
     await runner.cycle()
     await runner.publisher.close()
-    after = await retained(host, port, "homeassistant/+/hth_test/+/config", 2 + 2 * 2)
+    after = await retained(host, port, "homeassistant/+/hth_test/+/config", 3 + 2 * 2)
     assert "homeassistant/sensor/hth_test/xrp_usdt_puntuacion/config" not in after
     status = await retained(host, port, "hth_test/status", 1)
     assert status["hth_test/status"] == "offline"
