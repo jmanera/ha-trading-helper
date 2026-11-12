@@ -13,7 +13,7 @@ SUPERVISOR_URL = "http://supervisor"
 log = structlog.get_logger(__name__)
 
 
-def with_supervisor_mqtt(settings: Settings, *, http: httpx.Client | None = None) -> Settings:
+def with_supervisor_mqtt[S: Settings](settings: S, *, http: httpx.Client | None = None) -> S:
     """Use the broker the Supervisor announces (Mosquitto app) unless one was configured.
 
     Needs ``services: [mqtt:need]`` in the app's config.yaml.

@@ -81,3 +81,10 @@ def relative_volume(volume: pd.Series, period: int = 20) -> pd.Series:
 
 def pct_return(close: pd.Series, period: int) -> pd.Series:
     return close / close.shift(period) - 1
+
+
+def bollinger(close: pd.Series, period: int = 20, width: float = 2.0) -> pd.DataFrame:
+    """Middle band (SMA) and the bands ``width`` population standard deviations away."""
+    mid = close.rolling(period, min_periods=period).mean()
+    std = close.rolling(period, min_periods=period).std(ddof=0)
+    return pd.DataFrame({"mid": mid, "lower": mid - width * std, "upper": mid + width * std})

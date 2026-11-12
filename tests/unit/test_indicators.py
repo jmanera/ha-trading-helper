@@ -131,3 +131,13 @@ def test_relative_volume() -> None:
 def test_pct_return() -> None:
     out = ind.pct_return(pd.Series([100.0, 110.0, 121.0]), 2)
     assert out.iloc[2] == pytest.approx(0.21)
+
+
+def test_bollinger_bands() -> None:
+    close = pd.Series([1.0, 2.0, 3.0, 4.0, 5.0])
+    bb = ind.bollinger(close, period=3, width=2.0)
+    assert bb["mid"].isna().iloc[:2].all()
+    assert bb["mid"].iloc[2] == pytest.approx(2.0)
+    std = np.std([1.0, 2.0, 3.0])
+    assert bb["lower"].iloc[2] == pytest.approx(2.0 - 2 * std)
+    assert bb["upper"].iloc[4] == pytest.approx(4.0 + 2 * std)

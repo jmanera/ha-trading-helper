@@ -119,6 +119,23 @@ actual; vender una posición abierta sigue funcionando siempre. Se comprueba al 
 **Comprar** y otra vez al **Confirmar**. Para probar el flujo en Demo trading puedes poner
 `require_validation: false`, que también convierte en alertas los ENTRAR no validados.
 
+## Monitor intradía (segunda app)
+
+[intraday_monitor/](intraday_monitor/) es una segunda app del mismo repositorio. Cada 5 minutos
+consulta a OKX los pares más líquidos (por defecto 20 en USDT) y:
+
+- **Avisa** de lo que se sale de lo normal: volumen anómalo, movimientos bruscos en 15 min,
+  máximos o mínimos de 24 h y cambios de mercado (BTC cruzando su media de 50 horas). Los
+  umbrales son opciones y se pueden ajustar cuando quieras.
+- **Mide en papel** dos reglas intradía fijadas antes de empezar, cada una frente a un control
+  que entra al azar, con costes realistas. Tras al menos 28 días y 100 operaciones dice si
+  alguna tiene ventaja de verdad (B llega antes; A necesitará unas 6 semanas). Reglas y criterio: [docs/research/intraday.md](docs/research/intraday.md).
+
+No opera ni necesita claves. Si se corta, al volver recupera de OKX las velas que faltan y las
+procesa en orden. `ha-trading-helper intraday status` resume la medición desde la base de datos
+local. Panel y aviso de ejemplo: [dashboards/intraday_monitor.yaml](dashboards/intraday_monitor.yaml)
+y [dashboards/automations/intraday_monitor.yaml](dashboards/automations/intraday_monitor.yaml).
+
 ## Uso en local
 
 Requisitos: [uv](https://docs.astral.sh/uv/) (instala Python 3.12 por ti) y Docker para el

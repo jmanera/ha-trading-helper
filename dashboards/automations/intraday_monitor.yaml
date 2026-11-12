@@ -1,0 +1,19 @@
+# Example: forward every alert of the intraday monitor to Telegram.
+# With several bots, add config_entry_id: <your bot entry> to the telegram_bot action;
+# for the phone instead, replace it with notify.mobile_app_<device> (title + message).
+- id: intraday_monitor_alerta
+  alias: "Monitor intradía: alerta"
+  description: Envía por Telegram cada alerta del monitor intradía.
+  mode: queued
+  triggers:
+    - trigger: state
+      entity_id: event.intraday_monitor_alerta
+  conditions:
+    - condition: template
+      value_template: "{{ trigger.to_state is not none and trigger.to_state.state not in ['unknown', 'unavailable'] }}"
+  actions:
+    - action: telegram_bot.send_message
+      data:
+        parse_mode: plain_text
+        title: "Monitor intradía"
+        message: "{{ trigger.to_state.attributes.texto }}"

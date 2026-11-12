@@ -1,0 +1,66 @@
+# "Monitor intradía" dashboard: standard cards only, no custom components.
+# Entity ids assume the default base topic "intraday_monitor".
+title: Monitor intradía
+views:
+  - title: Monitor intradía
+    path: intradia
+    icon: mdi:timer-sand
+    cards:
+      - type: markdown
+        title: Últimas alertas
+        content: |-
+          {% set a = state_attr('sensor.intraday_monitor_alertas_24h', 'alertas') or [] %}
+          {% set icon = {'volumen': '🔊', 'movimiento': '⚡', 'maximo_24h': '🚀',
+                         'minimo_24h': '📉', 'btc_regimen': '🌍'} %}
+          {% for x in a -%}
+          {{ icon.get(x.tipo, '•') }} {{ as_timestamp(x.hora) | timestamp_custom('%H:%M') }} · {{ x.texto }}
+
+          {% else %}
+          Sin alertas en las últimas 24 h.
+          {% endfor %}
+
+      - type: markdown
+        title: Medición de las reglas
+        content: |-
+          | Regla | Cerradas | Aciertos | Media tras costes |
+          |:--|--:|--:|--:|
+          {%- for k in ['a', 'a_azar', 'b', 'b_azar'] %}
+          {%- set e = 'sensor.intraday_monitor_regla_' ~ k %}
+          {%- set x = states[e].attributes if states[e] else {} %}
+          {%- if x.nombre is defined %}
+          | {{ x.nombre }} | {{ x.cerradas }} | {{ x.aciertos }} % | {{ '%+.3f' | format(x.media_pct) }} % |
+          {%- endif %}
+          {%- endfor %}
+          {% for k in ['a', 'b'] %}
+          {%- set e = 'sensor.intraday_monitor_regla_' ~ k %}
+          {%- set x = states[e].attributes if states[e] else {} %}
+          {%- if x.veredicto_texto is defined %}
+
+          **{{ x.nombre }}:** {{ x.veredicto_texto }}
+          {%- endif %}
+          {%- endfor %}
+
+          Reglas {{ state_attr('sensor.intraday_monitor_estado', 'reglas_version') }}, fijadas
+          antes de empezar. Medición en papel: no se opera.
+
+      - type: entities
+        title: Estado del monitor
+        entities:
+          - entity: sensor.intraday_monitor_estado
+            name: Servicio
+          - type: attribute
+            entity: sensor.intraday_monitor_estado
+            attribute: midiendo_desde
+            name: Midiendo desde
+            format: date
+          - type: attribute
+            entity: sensor.intraday_monitor_estado
+            attribute: ultima_vela
+            name: Última vela
+            format: relative
+          - type: attribute
+            entity: sensor.intraday_monitor_estado
+            attribute: cortes
+            name: Cortes registrados
+          - entity: sensor.intraday_monitor_alertas_24h
+            name: Alertas 24 h
