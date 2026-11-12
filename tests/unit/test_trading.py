@@ -10,7 +10,7 @@ from ha_trading_helper.config import Settings
 from ha_trading_helper.okx.client import OkxError
 from ha_trading_helper.okx.trade import LotRules, OrderFill
 from ha_trading_helper.strategy.risk import Levels
-from ha_trading_helper.strategy.signal import Action, Signal
+from ha_trading_helper.strategy.signal import Action, Signal, Validation
 from ha_trading_helper.trading.executor import Executor
 from ha_trading_helper.trading.positions import OpenPosition, PositionStore
 from ha_trading_helper.trading.telegram import Conversation, Pending, parse_amount
@@ -157,12 +157,18 @@ def test_parse_amount() -> None:
     assert parse_amount("hola") is None and parse_amount("-5") is None
 
 
-def signal(pair: str = "SOL-USDC") -> Signal:
+GOOD = Validation(trades=100, win_rate=0.4, expectancy_r=0.3, profit_factor=1.5,
+                  max_drawdown_r=10, threshold=70, generated_at=T0)  # fmt: skip
+BAD = GOOD.model_copy(update={"expectancy_r": -0.15, "profit_factor": 0.74})
+
+
+def signal(pair: str = "SOL-USDC", validation: Validation | None = GOOD) -> Signal:
     return Signal(
         pair=pair, action=Action.ENTER, score=80, candle_open=T0, candle_close=T0,
         close=180.0, reasons=[], market_ok=True, market="ok",
         levels=Levels(entry=180, stop=171, target1=193.5, target2=207, risk_per_unit=9.0,
                       size=1, notional=180, risk_amount=9),
+        validation=validation,
     )  # fmt: skip
 
 
@@ -232,7 +238,7 @@ async def test_sell_flow_and_cancel(okx: FakeOkx, store: PositionStore) -> None:
 
 async def test_expiry_errors_and_guards(okx: FakeOkx, store: PositionStore) -> None:
     clock = Clock()
-    conv = conversation(store, okx, clock)
+    conv = conversation(store, okx, clock, require_validation=False)  # ETH has no signal
     await conv.handle({"data": "/hth buy SOL-USDC"})
     clock.t += timedelta(minutes=11)
     [late] = await conv.handle({"text": "100"})
@@ -280,6 +286,36 @@ async def test_disabled_trading_never_orders(okx: FakeOkx, store: PositionStore)
     conv.pending["t"] = Pending("buy", "SOL-USDC", T0, amount=10)
     [reply] = await conv.handle({"data": "/hth ok t"})
     assert "no se ha enviado" in reply.text and not okx.orders
+
+
+async def test_buy_needs_a_positive_validation(okx: FakeOkx, store: PositionStore) -> None:
+    clock = Clock()
+    conv = conversation(store, okx, clock)
+    signals = {"SOL-USDC": signal(validation=BAD), "XRP-USDC": signal("XRP-USDC", None)}
+    conv.latest_signal = signals.get
+    [refused] = await conv.handle({"data": "/hth buy SOL-USDC"})
+    assert "No compro SOL-USDC" in refused.text and "esperanza -0,15R" in refused.text
+    [no_backtest] = await conv.handle({"data": "/hth buy XRP-USDC"})
+    assert "sin backtest aún" in no_backtest.text
+    [unknown] = await conv.handle({"data": "/hth buy ETH-USDC"})
+    assert "No compro ETH-USDC" in unknown.text
+    assert conv.awaiting_amount is None
+
+    # Validation turns negative between the amount and the Confirmar press.
+    conv.latest_signal = {"SOL-USDC": signal()}.get
+    await conv.handle({"data": "/hth buy SOL-USDC"})
+    [confirm] = await conv.handle({"text": "100"})
+    token = confirm.keyboard[0].split("/hth ok ")[1].split(",")[0]
+    conv.latest_signal = signals.get
+    [late] = await conv.handle({"data": f"/hth ok {token}"})
+    assert "No compro" in late.text and not okx.orders
+
+    # Selling a position stays possible whatever the validation says.
+    store.add(OpenPosition(pair="SOL-USDC", quantity=1.0, entry_price=150.0, cost=150.0,
+                           entry_time=T0))  # fmt: skip
+    okx.balance = 1.0
+    [sell] = await conv.handle({"data": "/hth sell SOL-USDC"})
+    assert "venta a mercado" in sell.text
 
 
 def test_position_store_roundtrip(store: PositionStore) -> None:

@@ -11,6 +11,13 @@ señal.
 > No es asesoramiento financiero: las criptomonedas pueden perder gran parte de su valor y
 > los resultados pasados no garantizan los futuros.
 
+> **Estado (noviembre de 2026): las señales son informativas.** Validada sin sesgo de
+> supervivencia, la estrategia pierde fuera de muestra (−0,15R por operación), y ninguna de las
+> 26 variantes probadas, en 4 h ni en diario, muestra una ventaja demostrable
+> ([docs/validation.md](docs/validation.md), [docs/research/trials.md](docs/research/trials.md)).
+> La app sirve para ver el estado del mercado y por qué puntúa cada par, no para decidir
+> compras. No se recomienda operar con dinero real a partir de sus señales.
+
 ```text
 SOL-USDC · ENTRAR · puntuación 85/100 · vela 2026-11-10 16:00 UTC
 Motivos:
@@ -51,6 +58,12 @@ Validación: Fuera de muestra: 34 % aciertos, esperanza +0,04R tras costes (n=35
 6. **Validación**: un backtest walk-forward con las **mismas reglas**, comisiones y
    deslizamiento. Un `ENTRAR` solo cuenta como *alerta* si la estrategia fue rentable fuera de
    muestra (n ≥ 30, esperanza > 0, factor de beneficio ≥ 1,1). Si no, la señal es informativa.
+   Con el universo automático, la validación lo reconstruye **vela a vela**: descarga todos
+   los pares de la moneda de cotización y en cada vela solo deja entrar a los `max_pairs` con
+   más volumen medio de los 30 días anteriores (y al menos `min_volume_24h_usdt` al día). Así
+   no se valida solo con las monedas que hoy son líquidas porque subieron (sesgo de
+   supervivencia). Los pares que OKX ya retiró no se pueden descargar, así que queda algo de
+   sesgo. Con `pairs` fijos se validan esos pares tal cual.
 
 Resultados actuales: [docs/validation.md](docs/validation.md). Decisiones de diseño:
 [docs/adr/](docs/adr/).
@@ -86,6 +99,12 @@ Telegram en Home Assistant y las automatizaciones de
 Requisitos de OKX: una clave API con permiso **solo de Trade** (nunca *Withdraw*), vinculada a
 la IP de tu casa; empieza con claves de **Demo trading** (`okx_demo: true`, dinero ficticio).
 Hay un importe máximo por orden (`max_order_amount`). Diseño: [ADR 0002](docs/adr/0002-trading-from-telegram.md).
+
+**Compras bloqueadas sin validación positiva.** Con `require_validation: true` (por defecto)
+el bot rechaza cualquier compra mientras el walk-forward no sea positivo, que es la situación
+actual; vender una posición abierta sigue funcionando siempre. Se comprueba al pulsar
+**Comprar** y otra vez al **Confirmar**. Para probar el flujo en Demo trading puedes poner
+`require_validation: false`, que también convierte en alertas los ENTRAR no validados.
 
 ## Uso en local
 

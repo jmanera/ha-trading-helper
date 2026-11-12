@@ -160,7 +160,11 @@ def backtest_pair(
     benchmark: pd.DataFrame | None,
     params: EngineParams,
     costs: CostModel,
+    *,
+    allowed: pd.Series | None = None,
 ) -> list[Trade]:
+    """``allowed`` (bool per bar) limits entries to bars where the pair was in the
+    universe; exits of a trade already open are not affected."""
     features = compute_features(candles, benchmark)
     scored = score_frame(
         features,
@@ -168,7 +172,10 @@ def backtest_pair(
         min_history=params.min_history,
         enter_threshold=params.enter_threshold,
     )
-    return simulate(pair, features, scored["enter"], scored["score"], params, costs)
+    entries = scored["enter"]
+    if allowed is not None:
+        entries = entries & allowed.reindex(features.index, fill_value=False).astype(bool)
+    return simulate(pair, features, entries, scored["score"], params, costs)
 
 
 def limit_concurrent(trades: list[Trade], max_positions: int) -> list[Trade]:

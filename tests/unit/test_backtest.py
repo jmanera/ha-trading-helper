@@ -176,3 +176,23 @@ def test_bull_market_backtest_runs() -> None:
     candles = make_candles(uptrend_with_pullback(400))
     trades = backtest_pair("S-USDT", candles, None, EngineParams(), CostModel())
     assert isinstance(trades, list)
+
+
+def test_entries_only_while_in_the_universe() -> None:
+    data = {"A-USDT": cyclical_market(seed=3)}
+    every = backtest_pair("A-USDT", data["A-USDT"], None, EngineParams(), CostModel())
+    assert every
+    first = every[0].signal_time
+    allowed = pd.Series(True, index=data["A-USDT"].index)
+    allowed[allowed.index <= pd.Timestamp(first)] = False
+    later = backtest_pair(
+        "A-USDT", data["A-USDT"], None, EngineParams(), CostModel(), allowed=allowed
+    )
+    assert all(t.signal_time > first for t in later)
+    members = pd.DataFrame({"A-USDT": allowed})
+    wf = walk_forward(data, None, EngineParams(), CostModel(), folds=2, members=members)
+    assert all(t.signal_time > first for t in wf.oos_trades)
+    nobody = walk_forward(
+        data, None, EngineParams(), CostModel(), folds=2, members=pd.DataFrame({"B-USDT": allowed})
+    )
+    assert nobody.oos_trades == []

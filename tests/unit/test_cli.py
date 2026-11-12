@@ -10,7 +10,7 @@ from typer.testing import CliRunner
 
 from ha_trading_helper import cli
 from ha_trading_helper.config import Settings
-from ha_trading_helper.service import ScanResult
+from ha_trading_helper.service import ScanResult, ValidationHistory
 from ha_trading_helper.strategy.signal import build_signal
 from tests.conftest import make_candles, uptrend_with_pullback
 from tests.unit.test_backtest import cyclical_market
@@ -57,7 +57,14 @@ def _fake_history(monkeypatch: pytest.MonkeyPatch) -> None:
             cyclical_market(seed=9)
         )
 
+    async def load_validation(
+        settings: Settings, pairs: list[str], years: float
+    ) -> ValidationHistory:
+        data, benchmark = await load(settings, pairs, years)
+        return ValidationHistory(data, benchmark, None)
+
     monkeypatch.setattr(cli, "_load_history", load)
+    monkeypatch.setattr(cli, "_load_validation_history", load_validation)
 
 
 def test_backtest_command(monkeypatch: pytest.MonkeyPatch) -> None:

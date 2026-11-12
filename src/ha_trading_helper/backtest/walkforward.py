@@ -72,7 +72,10 @@ def walk_forward(
     thresholds: tuple[int, ...] = DEFAULT_THRESHOLDS,
     folds: int = 4,
     max_positions: int = 3,
+    members: pd.DataFrame | None = None,
 ) -> WalkForwardResult:
+    """``members`` (bars x pairs, bool) is the universe at each bar; None = every pair
+    in ``data`` may enter at any time."""
     # Indicators only look backwards, so one pass per threshold over the full
     # history gives the same trades a fold-by-fold run would.
     by_threshold: dict[int, list[Trade]] = {}
@@ -86,7 +89,10 @@ def walk_forward(
         )
         trades: list[Trade] = []
         for pair, candles in data.items():
-            trades += backtest_pair(pair, candles, benchmark, params, costs)
+            allowed = None
+            if members is not None:
+                allowed = members[pair] if pair in members else pd.Series(dtype=bool)
+            trades += backtest_pair(pair, candles, benchmark, params, costs, allowed=allowed)
         by_threshold[th] = limit_concurrent(trades, max_positions)
 
     starts = [f.index[0] for f in data.values() if not f.empty]

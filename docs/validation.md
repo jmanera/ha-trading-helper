@@ -49,3 +49,25 @@ actualizará este veredicto automáticamente.
    ya que buena parte de las pérdidas se concentra en 2026, con BTC bajo su EMA 200.
 4. Mantener la fase 7 (registro de señales en `signals.jsonl`) durante 4 semanas antes de
    cualquier cambio a ejecución real.
+
+## Revalidación con universo histórico (12 de noviembre de 2026)
+
+`validate` reconstruye ahora el universo vela a vela: de los 294 pares `-USDT` que OKX lista
+hoy, en cada vela solo pueden entrar los 20 con más volumen medio de los 30 días anteriores
+(mínimo 5 M USDT al día). 128 pares estuvieron en algún momento en ese universo; 111 de ellos
+no están en el universo de hoy. Mismas reglas (con la tendencia como filtro obligatorio),
+costes y walk-forward que arriba.
+
+| Universo | Operaciones | Aciertos | Esperanza | Factor de beneficio | Máx. drawdown |
+|---|---:|---:|---:|---:|---:|
+| Pares líquidos hoy (18) | 125 | 38 % | +0,024R | 1,04 | 15,8R |
+| **Histórico (128)** | **177** | **29 %** | **−0,149R** | **0,74** | **34,6R** |
+
+Sin el sesgo de supervivencia la estrategia **pierde** fuera de muestra (unas 1,7 veces su
+error estándar por debajo de cero). La validación anterior era optimista.
+
+Exploración de salidas con el mismo universo histórico (no implementada): sin venta parcial,
+sin objetivo fijo y sin salida por EMA 50, solo trailing desde el máximo, da +0,14R
+(trailing 3,5 × ATR, FB 1,22) a +0,29R (4 × ATR, FB 1,42) por operación, con un error
+estándar de ±0,21 a ±0,27R: mejor que las salidas actuales, pero no distinguible de cero y
+negativo sin las cinco mejores operaciones.

@@ -10,6 +10,7 @@ import respx
 from ha_trading_helper.config import Settings
 from ha_trading_helper.publish.payloads import Message
 from ha_trading_helper.scheduler import Runner
+from ha_trading_helper.service import ValidationHistory
 from tests.unit.test_backtest import cyclical_market
 from tests.unit.test_service import frames as frames_fixture
 from tests.unit.test_service import mock_okx
@@ -102,17 +103,15 @@ async def test_safe_cycle_swallows_errors(tmp_path: Path, monkeypatch: pytest.Mo
 async def test_revalidate_writes_report(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import ha_trading_helper.scheduler as sched
 
-    async def fake_history(
-        *_: object, **__: object
-    ) -> tuple[dict[str, pd.DataFrame], pd.DataFrame]:
-        return {"A-USDT": cyclical_market(seed=3)}, cyclical_market(seed=9)
+    async def fake_history(*_: object, **__: object) -> ValidationHistory:
+        return ValidationHistory({"A-USDT": cyclical_market(seed=3)}, cyclical_market(seed=9), None)
 
     cycles: list[int] = []
 
     async def fake_cycle() -> None:
         cycles.append(1)
 
-    monkeypatch.setattr(sched, "load_history", fake_history)
+    monkeypatch.setattr(sched, "load_validation_history", fake_history)
     r, _ = runner(tmp_path)
     monkeypatch.setattr(r, "cycle", fake_cycle)
     assert r.validation_is_stale()
@@ -130,5 +129,5 @@ async def test_revalidate_writes_report(tmp_path: Path, monkeypatch: pytest.Monk
     async def broken(*_: object, **__: object) -> None:
         raise RuntimeError("okx down")
 
-    monkeypatch.setattr(sched, "load_history", broken)
+    monkeypatch.setattr(sched, "load_validation_history", broken)
     await r.safe_revalidate()  # logged, not raised
