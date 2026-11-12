@@ -1,0 +1,40 @@
+configuration:
+  quote_currency:
+    name: Moneda de cotización
+    description: Moneda de los pares vigilados. USDT tiene muchos más pares líquidos, y la medición necesita operaciones.
+  max_pairs:
+    name: Máximo de pares
+    description: Pares más líquidos que se vigilan y en los que se miden las reglas.
+  min_volume_24h_usdt:
+    name: Volumen mínimo 24 h (USD equivalentes)
+    description: Filtro de liquidez de los pares.
+  volume_spike:
+    name: Alerta de volumen (veces lo normal)
+    description: Avisa cuando una vela de 5 min tiene este múltiplo del volumen medio de las 20 anteriores.
+  move_atr:
+    name: Alerta de movimiento (veces el ATR)
+    description: Avisa cuando el cuerpo de una vela de 15 min supera este múltiplo de su rango habitual.
+  breakout_alerts:
+    name: Alertas de máximo y mínimo de 24 h
+    description: Avisa cuando una vela de 5 min cierra por encima del máximo o por debajo del mínimo de las últimas 24 h.
+  btc_alerts:
+    name: Alertas de cambio de mercado
+    description: Avisa cuando BTC cruza su media de 50 horas.
+  cooldown_minutes:
+    name: Pausa entre alertas (minutos)
+    description: Como mucho una alerta del mismo tipo y par en este tiempo.
+  log_level:
+    name: Nivel de registro
+    description: Detalle de los registros de la app.
+  mqtt_host:
+    name: Servidor MQTT
+    description: Vacío = el broker que anuncia el Supervisor (app Mosquitto).
+  mqtt_port:
+    name: Puerto MQTT
+    description: Solo si usas un broker propio.
+  mqtt_username:
+    name: Usuario MQTT
+    description: Solo si usas un broker propio.
+  mqtt_password:
+    name: Contraseña MQTT
+    description: Solo si usas un broker propio.

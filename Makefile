@@ -46,12 +46,14 @@ up:  ## Mosquitto + Home Assistant + app with Docker Compose
 down:
 	docker compose down
 
-app-bundle:  ## Self-contained app folder for /addons (/local_apps) on Home Assistant
-	rm -rf dist/ha_trading_helper && mkdir -p dist/ha_trading_helper
-	cp -r trading_helper/. dist/ha_trading_helper/
-	cp -r pyproject.toml uv.lock README.md src dist/ha_trading_helper/
-	find dist/ha_trading_helper -name '__pycache__' -prune -exec rm -rf {} +
-	@echo "Copy dist/ha_trading_helper to /addons/ (/local_apps/ over SSH) on Home Assistant"
+app-bundle:  ## Self-contained app folders for /addons (/local_apps) on Home Assistant
+	for app in ha_trading_helper:trading_helper intraday_monitor:intraday_monitor; do \
+		out=dist/$${app%%:*}; src=$${app##*:}; \
+		rm -rf $$out && mkdir -p $$out && cp -r $$src/. $$out/ && \
+		cp -r pyproject.toml uv.lock README.md src $$out/ && \
+		find $$out -name '__pycache__' -prune -exec rm -rf {} + ; \
+	done
+	@echo "Copy dist/ha_trading_helper and dist/intraday_monitor to /addons/ on Home Assistant"
 
 clean:
 	rm -rf dist .pytest_cache .mypy_cache .ruff_cache .coverage coverage.xml htmlcov

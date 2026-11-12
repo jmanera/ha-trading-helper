@@ -1,0 +1,40 @@
+configuration:
+  quote_currency:
+    name: Quote currency
+    description: Currency of the watched pairs. USDT has many more liquid pairs, and the measurement needs trades.
+  max_pairs:
+    name: Maximum pairs
+    description: Most liquid pairs that are watched and where the rules are measured.
+  min_volume_24h_usdt:
+    name: Minimum 24 h volume (USD equivalent)
+    description: Liquidity filter of the pairs.
+  volume_spike:
+    name: Volume alert (times normal)
+    description: Alert when a 5 min candle has this multiple of the mean volume of the previous 20.
+  move_atr:
+    name: Move alert (times ATR)
+    description: Alert when the body of a 15 min candle exceeds this multiple of its usual range.
+  breakout_alerts:
+    name: 24 h high and low alerts
+    description: Alert when a 5 min candle closes above the 24 h high or below the 24 h low.
+  btc_alerts:
+    name: Market change alerts
+    description: Alert when BTC crosses its 50-hour average.
+  cooldown_minutes:
+    name: Pause between alerts (minutes)
+    description: At most one alert of the same kind and pair within this time.
+  log_level:
+    name: Log level
+    description: Detail of the app logs.
+  mqtt_host:
+    name: MQTT server
+    description: Empty = the broker announced by the Supervisor (Mosquitto app).
+  mqtt_port:
+    name: MQTT port
+    description: Only with your own broker.
+  mqtt_username:
+    name: MQTT user
+    description: Only with your own broker.
+  mqtt_password:
+    name: MQTT password
+    description: Only with your own broker.

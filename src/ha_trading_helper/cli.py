@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+from datetime import UTC, datetime
 from typing import Annotated
 
 import pandas as pd
@@ -204,3 +205,46 @@ def serve() -> None:
     settings = with_supervisor_mqtt(Settings())
     setup_logging(settings.log_level, json_logs=True)
     asyncio.run(Runner(settings).run_forever())
+
+
+intraday_app = typer.Typer(no_args_is_help=True, help="Intraday monitor (5m / 15m candles).")
+app.add_typer(intraday_app, name="intraday")
+
+
+@intraday_app.command("serve")
+def intraday_serve() -> None:
+    """Run forever: one cycle now and one after every 5 min close."""
+    from ha_trading_helper.ha_app import with_supervisor_mqtt
+    from ha_trading_helper.intraday.config import IntradaySettings
+    from ha_trading_helper.intraday.monitor import Monitor
+
+    settings = with_supervisor_mqtt(IntradaySettings())
+    setup_logging(settings.log_level, json_logs=True)
+    asyncio.run(Monitor(settings).run_forever())
+
+
+@intraday_app.command("status")
+def intraday_status() -> None:
+    """Print the measurement so far, read from the local database (no network)."""
+    from ha_trading_helper.intraday.config import IntradaySettings
+    from ha_trading_helper.intraday.monitor import CONTROLS
+    from ha_trading_helper.intraday.paper import stats, verdict
+    from ha_trading_helper.intraday.rules import RULES, RULES_VERSION
+    from ha_trading_helper.intraday.store import MeasurementStore
+
+    settings = IntradaySettings()
+    store = MeasurementStore(settings.data_dir / "intraday.db")
+    now = datetime.now(UTC)
+    started = store.started_at(now)
+    typer.echo(f"Reglas {RULES_VERSION} · midiendo desde {started:%Y-%m-%d %H:%M} UTC")
+    all_stats = {r.key: stats(store.trades(r.key)) for r in RULES}
+    for rule in RULES:
+        st = all_stats[rule.key]
+        typer.echo(
+            f"{rule.name:<26} cerradas={st.closed} abiertas={st.open} "
+            f"aciertos={st.win_rate:.0%} media={st.mean_pct:+.3f}% total={st.total_pct:+.2f}%"
+        )
+        if rule.control_of is None:
+            typer.echo("  " + verdict(st, all_stats[CONTROLS[rule.key].key], started, now)[1])
+    for start, end, note in store.gaps():
+        typer.echo(f"Corte {start:%d/%m %H:%M} - {end:%d/%m %H:%M} UTC: {note}")
