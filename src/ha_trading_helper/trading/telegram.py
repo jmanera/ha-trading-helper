@@ -3,6 +3,8 @@
 Home Assistant owns the bot. It forwards button presses (``/hth ...`` callback data)
 and plain text messages here; the replies go back as ``Reply`` objects that HA sends
 with ``telegram_bot.send_message``. Every order needs an explicit Confirmar press.
+With ``require_validation`` (the default) buying is refused while the walk-forward
+validation is not positive; selling always works.
 
 Callback data (Telegram limits it to 64 bytes):
     /hth buy SOL-USDC     ask for the amount to invest
@@ -121,9 +123,25 @@ class Conversation:
             return [await self._execute(pending)]
         return [self._reply(f"Orden desconocida: {verb}")]
 
+    def _buy_blocked(self, pair: str) -> str | None:
+        """Why buying ``pair`` is refused, or None. Selling is never blocked."""
+        if not self.settings.require_validation:
+            return None
+        signal = self.latest_signal(pair)
+        validation = signal.validation if signal is not None else None
+        if validation is not None and validation.positive:
+            return None
+        detail = validation.text() if validation is not None else "sin backtest aún"
+        return (
+            f"No compro {pair}: la estrategia no está validada fuera de muestra ({detail}), "
+            "así que sus señales son solo informativas. Puedes seguir vendiendo tus posiciones."
+        )
+
     def _ask_amount(self, pair: str) -> Reply:
         if self.store.get(pair) is not None:
             return self._reply(f"Ya tienes una posición abierta en {pair}.")
+        if blocked := self._buy_blocked(pair):
+            return self._reply(blocked)
         signal = self.latest_signal(pair)
         risk = signal.levels.risk_per_unit if signal and signal.levels else None
         self.awaiting_amount = Pending("buy", pair, self.now(), risk_per_unit=risk)
@@ -178,6 +196,8 @@ class Conversation:
     async def _execute(self, pending: Pending) -> Reply:
         if self.executor is None or not self.settings.trading_ready:
             return self._reply("La operativa está desactivada; no se ha enviado la orden.")
+        if pending.kind == "buy" and (blocked := self._buy_blocked(pending.pair)):
+            return self._reply(blocked)  # validation turned negative while confirming
         async with self._lock:
             try:
                 if pending.kind == "buy":

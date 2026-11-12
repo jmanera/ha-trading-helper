@@ -38,7 +38,7 @@ asesoramiento financiero.
 | `min_volume_24h_usdt` | 5 000 000 | Filtro de liquidez, en USD equivalentes. En USDC y EUR hay menos pares líquidos que en USDT: baja este valor si salen pocos |
 | `enter_threshold` | 70 | Puntuación mínima para ENTRAR |
 | `wait_threshold` | 40 | Por encima, una moneda en ESPERAR se marca para vigilar |
-| `require_validation` | true | ENTRAR solo es alerta si la estrategia está validada |
+| `require_validation` | true | ENTRAR solo es alerta, y Telegram solo compra, si la estrategia está validada |
 | `capital` | 10 000 | Capital simulado para el tamaño sugerido |
 | `risk_per_trade_pct` | 1 | Riesgo por operación |
 | `max_positions` | 3 | Posiciones simultáneas |
@@ -70,6 +70,10 @@ positions:
 Al pulsar **Comprar**, el bot pide el importe; tras **Confirmar** compra a mercado, pone el
 stop en OKX y registra la posición. **Vender** cancela ese stop y vende la cantidad comprada.
 Las peticiones caducan a los 10 minutos. `/posiciones` lista las abiertas.
+
+Mientras la validación no sea positiva (hoy no lo es), el bot **no compra**: responde que las
+señales son informativas. Vender sigue funcionando. Con `require_validation: false` se
+desactiva este bloqueo; úsalo solo con Demo trading.
 
 ## Datos
 

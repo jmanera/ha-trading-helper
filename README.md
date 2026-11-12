@@ -100,6 +100,12 @@ Requisitos de OKX: una clave API con permiso **solo de Trade** (nunca *Withdraw*
 la IP de tu casa; empieza con claves de **Demo trading** (`okx_demo: true`, dinero ficticio).
 Hay un importe máximo por orden (`max_order_amount`). Diseño: [ADR 0002](docs/adr/0002-trading-from-telegram.md).
 
+**Compras bloqueadas sin validación positiva.** Con `require_validation: true` (por defecto)
+el bot rechaza cualquier compra mientras el walk-forward no sea positivo, que es la situación
+actual; vender una posición abierta sigue funcionando siempre. Se comprueba al pulsar
+**Comprar** y otra vez al **Confirmar**. Para probar el flujo en Demo trading puedes poner
+`require_validation: false`, que también convierte en alertas los ENTRAR no validados.
+
 ## Uso en local
 
 Requisitos: [uv](https://docs.astral.sh/uv/) (instala Python 3.12 por ti) y Docker para el
