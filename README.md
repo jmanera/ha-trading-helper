@@ -11,6 +11,13 @@ señal.
 > No es asesoramiento financiero: las criptomonedas pueden perder gran parte de su valor y
 > los resultados pasados no garantizan los futuros.
 
+> **Estado (noviembre de 2026): las señales son informativas.** Validada sin sesgo de
+> supervivencia, la estrategia pierde fuera de muestra (−0,15R por operación), y ninguna de las
+> 26 variantes probadas, en 4 h ni en diario, muestra una ventaja demostrable
+> ([docs/validation.md](docs/validation.md), [docs/research/trials.md](docs/research/trials.md)).
+> La app sirve para ver el estado del mercado y por qué puntúa cada par, no para decidir
+> compras. No se recomienda operar con dinero real a partir de sus señales.
+
 ```text
 SOL-USDC · ENTRAR · puntuación 85/100 · vela 2026-11-10 16:00 UTC
 Motivos:

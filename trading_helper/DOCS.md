@@ -20,6 +20,8 @@ asesoramiento financiero.
 - Cada domingo recalcula la validación walk-forward con 2 años de histórico. Mientras la
   estrategia no sea rentable fuera de muestra tras costes, los ENTRAR son informativos
   (`alerta: false`).
+- Hoy la validación **no es positiva**: la estrategia pierde fuera de muestra, así que las
+  señales son solo informativas. No se recomienda operar con dinero real a partir de ellas.
 - Con el universo automático, la validación usa el universo que habría habido en cada fecha
   (los pares más líquidos de entonces, no los de hoy). Para eso descarga el histórico de todos
   los pares de la moneda de cotización: la primera vez tarda unos 30 minutos y ocupa unas
