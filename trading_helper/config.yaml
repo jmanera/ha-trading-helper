@@ -1,5 +1,5 @@
 name: HA Trading Helper
-version: "0.4.0"
+version: "0.5.0"
 slug: ha_trading_helper
 description: Señales cripto explicables de OKX (spot, velas de 1 h a 1 día). Opcional, compra y venta confirmadas por Telegram.
 url: https://github.com/jmanera/ha-trading-helper

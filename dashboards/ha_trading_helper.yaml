@@ -1,4 +1,4 @@
-# "Señales cripto" dashboard: four standard cards, no custom components.
+# "Señales cripto" dashboard: standard cards only, no custom components.
 # Entity ids assume the default base topic "ha_trading_helper".
 title: Señales cripto
 views:
@@ -25,6 +25,25 @@ views:
           Sin datos todavía.
           {% endif %}
 
+      - type: picture-entity
+        entity: image.ha_trading_helper_mejor_oportunidad_grafico
+        show_name: false
+        show_state: false
+
+      - type: markdown
+        title: Explicación
+        content: |-
+          {% set e = 'sensor.ha_trading_helper_mejor_oportunidad' %}
+          {% set a = states[e].attributes if states[e] else {} %}
+          {% if a.explicacion is defined %}
+          {% for p in a.explicacion -%}
+          {{ p.i }} **{{ p.t }}**{{ ': ' ~ p.d if p.d }}
+
+          {% endfor %}
+          {% else %}
+          Sin datos todavía.
+          {% endif %}
+
       - type: markdown
         title: Ranking
         content: |-
@@ -43,7 +62,7 @@ views:
           {% endfor %}
 
       - type: markdown
-        title: Por qué
+        title: Detalle técnico
         content: |-
           {% set e = 'sensor.ha_trading_helper_mejor_oportunidad' %}
           {% set a = states[e].attributes if states[e] else {} %}

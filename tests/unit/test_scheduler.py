@@ -46,7 +46,9 @@ def runner(tmp_path: Path, **kw: object) -> tuple[Runner, FakePublisher]:
 
 
 @respx.mock
-async def test_cycle_publishes_and_logs(tmp_path: Path, frames: dict[str, pd.DataFrame]) -> None:
+async def test_cycle_publishes_and_logs(
+    tmp_path: Path, frames: dict[str, pd.DataFrame], monkeypatch: pytest.MonkeyPatch
+) -> None:
     mock_okx(frames)
     r, fake = runner(tmp_path)
     await r.cycle()
@@ -54,6 +56,19 @@ async def test_cycle_publishes_and_logs(tmp_path: Path, frames: dict[str, pd.Dat
     assert topics["ha_trading_helper/best/state"] == "SOL-USDT"
     assert "homeassistant/sensor/ha_trading_helper/sol_usdt_puntuacion/config" in topics
     assert (tmp_path / "signals.jsonl").read_text()
+    chart = topics["ha_trading_helper/best/chart"]
+    assert isinstance(chart, bytes) and chart.startswith(b"\x89PNG")
+
+    # A chart that fails, or a best pair without candles, publishes everything else.
+    import ha_trading_helper.scheduler as sched
+
+    def broken(*_: object, **__: object) -> bytes:
+        raise RuntimeError("no font")
+
+    monkeypatch.setattr(sched, "render_chart", broken)
+    await r.cycle()
+    assert "ha_trading_helper/best/chart" not in {m.topic for m in fake.sent[-1]}
+    assert r.latest["SOL-USDT"] and await r.chart_messages(r.latest["SOL-USDT"], {}) == []
 
     # Publisher failure is logged, not raised, and the cycle still records signals.
     fake.fail = True

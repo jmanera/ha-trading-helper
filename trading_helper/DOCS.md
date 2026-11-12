@@ -13,7 +13,8 @@ asesoramiento financiero.
 
 - Al arrancar y tras cada cierre de vela (con 4 h: 00, 04, 08, 12, 16, 20 UTC + 1 min) analiza
   los pares más líquidos y publica:
-  - `sensor.ha_trading_helper_mejor_oportunidad`
+  - `sensor.ha_trading_helper_mejor_oportunidad` (con la explicación en lenguaje llano)
+  - `image.ha_trading_helper_mejor_oportunidad_grafico` (gráfico de velas con los indicadores)
   - `sensor.ha_trading_helper_<par>_puntuacion` (motivos en los atributos)
   - `binary_sensor.ha_trading_helper_<par>_entrada`
   - `sensor.ha_trading_helper_estado`

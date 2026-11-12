@@ -41,11 +41,13 @@ def test_discovery_follows_ha_schema() -> None:
         "homeassistant/sensor/hth/mejor_oportunidad/config",
         "homeassistant/sensor/hth/sol_usdt_puntuacion/config",
         "homeassistant/binary_sensor/hth/sol_usdt_entrada/config",
+        "homeassistant/image/hth/mejor_oportunidad_grafico/config",
     }
     for payload in topics.values():
         body = json.loads(payload)
-        for key in ("name", "unique_id", "state_topic", "availability_topic", "device"):
+        for key in ("name", "unique_id", "availability_topic", "device"):
             assert key in body
+        assert "state_topic" in body or "image_topic" in body
         assert body["device"]["identifiers"] == ["hth"]
         assert body["unique_id"].startswith("hth_")
     score = json.loads(topics["homeassistant/sensor/hth/sol_usdt_puntuacion/config"])
@@ -54,6 +56,10 @@ def test_discovery_follows_ha_schema() -> None:
     entry = json.loads(topics["homeassistant/binary_sensor/hth/sol_usdt_entrada/config"])
     assert (entry["payload_on"], entry["payload_off"]) == ("ON", "OFF")
     assert all(m.retain for m in msgs)
+    chart = json.loads(topics["homeassistant/image/hth/mejor_oportunidad_grafico/config"])
+    assert chart["image_topic"] == "hth/best/chart"
+    assert chart["content_type"] == "image/png"
+    assert payloads.chart_message(b"png", "hth") == payloads.Message("hth/best/chart", b"png")
 
 
 def test_removal_clears_configs() -> None:
@@ -74,6 +80,9 @@ def test_state_messages(signals: list[Signal]) -> None:
     assert attrs["accion"] == "ENTRAR"
     assert attrs["alerta"] is True
     assert sum(m["p"] for m in attrs["motivos"]) == attrs["puntuacion"]
+    assert attrs["explicacion"][0]["t"] == "Las reglas ven motivos para comprar"
+    assert attrs["explicacion"][-1]["t"] == "Importante"
+    assert {"i", "t", "d"} <= set(attrs["explicacion"][1])
     assert "esperanza +0,22R" in attrs["validacion"]
     assert set(attrs["niveles"]) >= {"entrada", "stop", "objetivo1", "objetivo2"}
     best = json.loads(topics["hth/best/attributes"])

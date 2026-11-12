@@ -23,7 +23,8 @@ from ha_trading_helper.data.universe import (
 )
 from ha_trading_helper.okx.client import OkxClient, OkxError
 from ha_trading_helper.publish import payloads
-from ha_trading_helper.strategy.signal import Action, Signal, build_signal
+from ha_trading_helper.strategy.actions import Action
+from ha_trading_helper.strategy.signal import Signal, build_signal
 from ha_trading_helper.timeframe import bars_per_year
 
 log = structlog.get_logger(__name__)
@@ -40,6 +41,8 @@ class ScanResult:
     signals: list[Signal]
     universe: list[str]
     errors: list[str] = field(default_factory=list)
+    # Closed candles the signals were built from, benchmark included (for charts).
+    candles: dict[str, pd.DataFrame] = field(default_factory=dict)
     finished_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def ranked(self) -> list[Signal]:
@@ -113,7 +116,8 @@ async def scan(
             continue
         if sig is not None:
             signals.append(sig)
-    return ScanResult(signals, universe, errors)
+    candles = {p: f for p, f in frames.items() if f is not None}
+    return ScanResult(signals, universe, errors, candles=candles)
 
 
 async def load_history(

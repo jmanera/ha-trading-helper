@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 from datetime import datetime
-from enum import StrEnum
 
 import pandas as pd
 from pydantic import BaseModel
 
 from ha_trading_helper.config import Position, Settings
+from ha_trading_helper.strategy.actions import Action
 from ha_trading_helper.strategy.explain import describe, fmt, market_text
 from ha_trading_helper.strategy.features import compute_features
+from ha_trading_helper.strategy.plain import Point, explain_plain
 from ha_trading_helper.strategy.risk import Levels, compute_levels
 from ha_trading_helper.strategy.rules import EVIDENCES, exit_signal
 from ha_trading_helper.strategy.scoring import score_frame
@@ -18,12 +19,6 @@ from ha_trading_helper.timeframe import duration
 
 MIN_VALIDATION_TRADES = 30
 MIN_PROFIT_FACTOR = 1.1
-
-
-class Action(StrEnum):
-    ENTER = "ENTRAR"
-    WAIT = "ESPERAR"
-    EXIT = "SALIR"
 
 
 class Reason(BaseModel):
@@ -77,6 +72,7 @@ class Signal(BaseModel):
     stop_atr_mult: float = 2.0
     validation: Validation | None = None
     alert: bool = False
+    explanation: list[Point] = []
 
     def top_reasons(self, n: int = 3) -> list[Reason]:
         scored = [r for r in self.reasons if r.points > 0]
@@ -184,6 +180,18 @@ def build_signal(
     alert = action is Action.EXIT or (
         action is Action.ENTER and (validated or not settings.require_validation)
     )
+    explanation = explain_plain(
+        action,
+        score=score,
+        threshold=settings.enter_threshold,
+        row=row,
+        passed={r.key: r.points > 0 for r in reasons},
+        market_ok=market_is_ok,
+        bar=settings.bar,
+        levels=levels,
+        exit_reason=exit_reason,
+        validation_positive=validation.positive if validation is not None else None,
+    )
     candle_open = features.index[i].to_pydatetime()
     return Signal(
         pair=pair,
@@ -200,4 +208,5 @@ def build_signal(
         stop_atr_mult=settings.stop_atr_mult,
         validation=validation,
         alert=alert,
+        explanation=explanation,
     )

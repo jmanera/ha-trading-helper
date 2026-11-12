@@ -11,6 +11,7 @@ import signal
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+import pandas as pd
 import structlog
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -22,6 +23,7 @@ from ha_trading_helper.data.store import CandleStore
 from ha_trading_helper.okx.client import OkxClient
 from ha_trading_helper.okx.trade import OkxTradeClient
 from ha_trading_helper.publish import payloads
+from ha_trading_helper.publish.chart import render_chart
 from ha_trading_helper.publish.mqtt import MqttPublisher, serve_requests
 from ha_trading_helper.service import SignalLog, load_validation_history, scan, validation_path
 from ha_trading_helper.strategy.signal import Signal
@@ -76,6 +78,22 @@ class Runner:
         replies = await self.conversation.handle(event)
         return [r.model_dump() for r in replies]
 
+    async def chart_messages(
+        self, best: Signal, candles: dict[str, pd.DataFrame]
+    ) -> list[payloads.Message]:
+        """The chart of the best opportunity; a chart that fails never stops the cycle."""
+        frame = candles.get(best.pair)
+        if frame is None:
+            return []
+        try:
+            png = await asyncio.to_thread(
+                render_chart, best, frame, candles.get(self.settings.benchmark), self.settings
+            )
+        except Exception:
+            log.exception("chart_failed", pair=best.pair)
+            return []
+        return [payloads.chart_message(png, self.settings.base_topic)]
+
     async def cycle(self) -> None:
         async with self._lock:
             started = datetime.now(UTC)
@@ -87,6 +105,10 @@ class Runner:
             messages = payloads.discovery_messages(pairs, s.base_topic, s.discovery_prefix)
             gone = sorted(self._published_pairs - set(pairs))
             messages += payloads.removal_messages(gone, s.base_topic, s.discovery_prefix)
+            best = result.ranked()[0] if result.signals else None
+            if best is not None:
+                # Before the states, so the chart is new when a notice fires on them.
+                messages += await self.chart_messages(best, result.candles)
             messages += payloads.state_messages(
                 result.signals,
                 s.base_topic,
@@ -107,7 +129,6 @@ class Runner:
             except Exception:
                 log.exception("publish_failed")
             changed = self.signal_log.record(result.signals)
-            best = result.ranked()[0] if result.signals else None
             log.info(
                 "cycle_done",
                 pairs=len(result.signals),

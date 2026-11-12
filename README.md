@@ -74,14 +74,27 @@ Todas bajo el dispositivo **HA Trading Helper**:
 
 | Entidad | Estado | Atributos |
 |---|---|---|
-| `sensor.ha_trading_helper_mejor_oportunidad` | par mejor situado | acción, puntuación, motivos, niveles, ranking top 10 |
-| `sensor.ha_trading_helper_<par>_puntuacion` | 0-100 | `accion`, `motivos`, `niveles`, `validacion`, `alerta`, `vigilar` |
+| `sensor.ha_trading_helper_mejor_oportunidad` | par mejor situado | acción, puntuación, motivos, explicación, niveles, ranking top 10 |
+| `image.ha_trading_helper_mejor_oportunidad_grafico` | gráfico de velas del par mejor situado | |
+| `sensor.ha_trading_helper_<par>_puntuacion` | 0-100 | `accion`, `motivos`, `explicacion`, `niveles`, `validacion`, `alerta`, `vigilar` |
 | `binary_sensor.ha_trading_helper_<par>_entrada` | on si ENTRAR | |
 | `sensor.ha_trading_helper_estado` | ok / degradada / error | última vela, errores, validación |
 
 El panel **Señales cripto** ([dashboards/ha_trading_helper.yaml](dashboards/ha_trading_helper.yaml))
 usa solo tarjetas estándar, y hay una automatización de ejemplo que avisa al móvil cuando un
 par pasa a ENTRAR o SALIR ([dashboards/automations/](dashboards/automations/)).
+
+**Explicación para no expertos.** Cada señal trae en `explicacion` una lista de ideas
+(`i` icono, `t` título, `d` texto) que cuenta en lenguaje llano por qué se decidió así: si el
+precio va hacia arriba, si ha roto un máximo, si hay mucho volumen… y siempre termina con lo
+que dice la validación. Se genera a partir de las mismas reglas que deciden la señal, sin IA,
+así que no puede afirmar nada que los indicadores no vean.
+
+**Gráfico.** En cada vela la app dibuja las últimas 120 velas del par mejor situado con todo lo
+que miran las reglas: medias de 50 y 200 velas, máximo de 20 velas, velas con ENTRAR, stop y
+objetivos, volumen, RSI y MACD, cada panel con una leyenda corta. Se publica como entidad
+`image` y el panel lo muestra junto a la explicación; los avisos de ejemplo lo adjuntan cuando
+tratan del par mejor situado.
 
 ## Operar desde Telegram
 
