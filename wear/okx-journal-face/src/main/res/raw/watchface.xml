@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Bitácora OKX watch face (Watch Face Format v2), 450 x 450, scaled to the screen.
+
+  Three Home Assistant "entity state" complications (short text, unit switched off):
+    slot 0  sensor.okx_journal_valor            account value, large, white
+    slot 1  sensor.okx_journal_resultado_hoy    today's result: green, red or white
+    slot 2  sensor.okx_journal_posiciones       open positions, white
+
+  Home Assistant formats the state with the watch's language ("-28,28"), so the colour of
+  today's result is read from the text: red when it starts with a minus sign, white when it
+  is zero, green otherwise.
+-->
+<WatchFace width="450" height="450">
+  <Metadata key="CLOCK_TYPE" value="DIGITAL" />
+  <Metadata key="PREVIEW_TIME" value="10:08:32" />
+
+  <Scene backgroundColor="#ff000000">
+
+    <!-- Labels -->
+    <PartText x="125" y="112" width="200" height="34">
+      <Variant mode="AMBIENT" target="alpha" value="120" />
+      <Text align="CENTER">
+        <Font family="SYNC_TO_DEVICE" size="24" color="#ff888780">
+          USDC
+        </Font>
+      </Text>
+    </PartText>
+    <PartText x="58" y="336" width="160" height="30">
+      <Variant mode="AMBIENT" target="alpha" value="120" />
+      <Text align="CENTER">
+        <Font family="SYNC_TO_DEVICE" size="22" color="#ff888780">
+          hoy
+        </Font>
+      </Text>
+    </PartText>
+    <PartText x="232" y="336" width="160" height="30">
+      <Variant mode="AMBIENT" target="alpha" value="120" />
+      <Text align="CENTER">
+        <Font family="SYNC_TO_DEVICE" size="22" color="#ff888780">
+          posiciones
+        </Font>
+      </Text>
+    </PartText>
+
+    <!-- Divider between the value and the two small figures -->
+    <PartDraw x="95" y="262" width="260" height="2">
+      <Variant mode="AMBIENT" target="alpha" value="0" />
+      <Line startX="0" startY="1" endX="260" endY="1">
+        <Stroke color="#ff2c2c2a" thickness="2" />
+      </Line>
+    </PartDraw>
+
+    <!-- Slot 0: account value -->
+    <ComplicationSlot slotId="0" displayName="slot_value" x="30" y="148" width="390" height="100"
+        supportedTypes="SHORT_TEXT" isCustomizable="TRUE">
+      <DefaultProviderPolicy
+          defaultSystemProvider="EMPTY"
+          defaultSystemProviderType="EMPTY"
+          primaryProvider="io.homeassistant.companion.android/io.homeassistant.companion.android.complications.EntityStateDataSourceService"
+          primaryProviderType="SHORT_TEXT" />
+      <BoundingBox x="0" y="0" width="390" height="100" />
+      <Complication type="SHORT_TEXT">
+        <PartText x="0" y="0" width="390" height="100">
+          <Variant mode="AMBIENT" target="alpha" value="170" />
+          <Text align="CENTER" ellipsis="TRUE">
+            <Font family="SYNC_TO_DEVICE" size="74" weight="MEDIUM" color="#ffffffff">
+              <Template>%s<Parameter expression="[COMPLICATION.TEXT]" /></Template>
+            </Font>
+          </Text>
+        </PartText>
+      </Complication>
+      <Complication type="EMPTY">
+        <PartText x="0" y="0" width="390" height="100">
+          <Text align="CENTER">
+            <Font family="SYNC_TO_DEVICE" size="74" color="#ff444441">
+              --
+            </Font>
+          </Text>
+        </PartText>
+      </Complication>
+    </ComplicationSlot>
+
+    <!-- Slot 1: today's result, coloured by its sign -->
+    <ComplicationSlot slotId="1" displayName="slot_today" x="58" y="276" width="160" height="60"
+        supportedTypes="SHORT_TEXT" isCustomizable="TRUE">
+      <DefaultProviderPolicy
+          defaultSystemProvider="EMPTY"
+          defaultSystemProviderType="EMPTY"
+          primaryProvider="io.homeassistant.companion.android/io.homeassistant.companion.android.complications.EntityStateDataSourceService"
+          primaryProviderType="SHORT_TEXT" />
+      <BoundingBox x="0" y="0" width="160" height="60" />
+      <Complication type="SHORT_TEXT">
+        <Condition>
+          <Expressions>
+            <Expression name="zero"><![CDATA[
+              [COMPLICATION.TEXT] == "0" || [COMPLICATION.TEXT] == "0.0" ||
+              [COMPLICATION.TEXT] == "0,0" || [COMPLICATION.TEXT] == "0.00" ||
+              [COMPLICATION.TEXT] == "0,00" || [COMPLICATION.TEXT] == "-0.0" ||
+              [COMPLICATION.TEXT] == "-0,0" || [COMPLICATION.TEXT] == "-0.00" ||
+              [COMPLICATION.TEXT] == "-0,00"
+            ]]></Expression>
+            <Expression name="negative"><![CDATA[
+              subText([COMPLICATION.TEXT], 0, 1) == "-" || subText([COMPLICATION.TEXT], 0, 1) == "−"
+            ]]></Expression>
+          </Expressions>
+          <Compare expression="zero">
+            <PartText x="0" y="0" width="160" height="60">
+              <Variant mode="AMBIENT" target="alpha" value="170" />
+              <Text align="CENTER" ellipsis="TRUE">
+                <Font family="SYNC_TO_DEVICE" size="40" weight="MEDIUM" color="#ffffffff">
+                  <Template>%s<Parameter expression="[COMPLICATION.TEXT]" /></Template>
+                </Font>
+              </Text>
+            </PartText>
+          </Compare>
+          <Compare expression="negative">
+            <PartText x="0" y="0" width="160" height="60">
+              <Variant mode="AMBIENT" target="alpha" value="170" />
+              <Text align="CENTER" ellipsis="TRUE">
+                <Font family="SYNC_TO_DEVICE" size="40" weight="MEDIUM" color="#ffff6b5e">
+                  <Template>%s<Parameter expression="[COMPLICATION.TEXT]" /></Template>
+                </Font>
+              </Text>
+            </PartText>
+          </Compare>
+          <Default>
+            <PartText x="0" y="0" width="160" height="60">
+              <Variant mode="AMBIENT" target="alpha" value="170" />
+              <Text align="CENTER" ellipsis="TRUE">
+                <Font family="SYNC_TO_DEVICE" size="40" weight="MEDIUM" color="#ff3ccf91">
+                  <Template>+%s<Parameter expression="[COMPLICATION.TEXT]" /></Template>
+                </Font>
+              </Text>
+            </PartText>
+          </Default>
+        </Condition>
+      </Complication>
+      <Complication type="EMPTY">
+        <PartText x="0" y="0" width="160" height="60">
+          <Text align="CENTER">
+            <Font family="SYNC_TO_DEVICE" size="40" color="#ff444441">
+              --
+            </Font>
+          </Text>
+        </PartText>
+      </Complication>
+    </ComplicationSlot>
+
+    <!-- Slot 2: open positions -->
+    <ComplicationSlot slotId="2" displayName="slot_positions" x="232" y="276" width="160" height="60"
+        supportedTypes="SHORT_TEXT" isCustomizable="TRUE">
+      <DefaultProviderPolicy
+          defaultSystemProvider="EMPTY"
+          defaultSystemProviderType="EMPTY"
+          primaryProvider="io.homeassistant.companion.android/io.homeassistant.companion.android.complications.EntityStateDataSourceService"
+          primaryProviderType="SHORT_TEXT" />
+      <BoundingBox x="0" y="0" width="160" height="60" />
+      <Complication type="SHORT_TEXT">
+        <PartText x="0" y="0" width="160" height="60">
+          <Variant mode="AMBIENT" target="alpha" value="170" />
+          <Text align="CENTER" ellipsis="TRUE">
+            <Font family="SYNC_TO_DEVICE" size="40" weight="MEDIUM" color="#ffffffff">
+              <Template>%s<Parameter expression="[COMPLICATION.TEXT]" /></Template>
+            </Font>
+          </Text>
+        </PartText>
+      </Complication>
+      <Complication type="EMPTY">
+        <PartText x="0" y="0" width="160" height="60">
+          <Text align="CENTER">
+            <Font family="SYNC_TO_DEVICE" size="40" color="#ff444441">
+              --
+            </Font>
+          </Text>
+        </PartText>
+      </Complication>
+    </ComplicationSlot>
+
+  </Scene>
+</WatchFace>

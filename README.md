@@ -2,12 +2,13 @@
 
 # HA Trading Helper
 
-**Tres apps de Home Assistant para seguir el mercado cripto de OKX y llevar un diario de tus
-inversiones, explicadas en lenguaje llano.**
+**Tres apps de Home Assistant y una esfera de reloj para seguir el mercado cripto de OKX y
+llevar un diario de tus inversiones, explicadas en lenguaje llano.**
 
 [![CI](https://github.com/jmanera/ha-trading-helper/actions/workflows/ci.yml/badge.svg)](https://github.com/jmanera/ha-trading-helper/actions/workflows/ci.yml)
 ![Python 3.12](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)
 ![Home Assistant](https://img.shields.io/badge/Home%20Assistant-app-18BCF2?logo=homeassistant&logoColor=white)
+![Wear OS](https://img.shields.io/badge/Wear%20OS-esfera-4285F4?logo=wearos&logoColor=white)
 ![mypy strict](https://img.shields.io/badge/mypy-strict-2A6DB2)
 ![Ruff](https://img.shields.io/badge/lint-ruff-D7FF64?logo=ruff&logoColor=black)
 [![Licencia MIT](https://img.shields.io/badge/licencia-MIT-green)](LICENSE)
@@ -57,6 +58,14 @@ por activo y notas propias en cada operación. Guarda el histórico en MariaDB.
 </td>
 </tr>
 </table>
+
+### ⌚ Y en la muñeca
+
+La esfera **Bitácora OKX** para Wear OS (pensada para el Galaxy Watch 5) muestra el valor de la
+cuenta, el resultado de hoy en verde, rojo o blanco, y las posiciones abiertas. Toma los datos
+de Home Assistant y no necesita ninguna app propia en el móvil. [Cómo instalarla](wear/README.md).
+
+<p align="center"><img src="docs/img/watch-face.png" alt="La esfera Bitácora OKX en un día positivo, uno negativo y uno sin cambios" width="820"></p>
 
 ## Capturas
 
@@ -115,10 +124,12 @@ flowchart LR
         D[(MariaDB)]
         UI[Paneles, avisos<br/>y Telegram]
     end
+    W[Esfera Wear OS<br/>complicaciones de HA]
     OKX -- velas públicas --> S & I
     OKX -- clave de solo lectura --> J
     S & I & J -- MQTT Discovery --> M --> UI
     J <--> D
+    UI --> W
 ```
 
 - **Núcleo puro y testeado.** Indicadores, reglas y cálculos de la bitácora son funciones sin
@@ -152,6 +163,13 @@ make app-bundle    # dist/ha_trading_helper, dist/intraday_monitor y dist/okx_jo
 Copia esas carpetas a `/addons/` y búscalas en *Ajustes → Apps → Tienda de apps*. El paso a
 paso, las opciones y las entidades de cada app están en el **[manual de uso](docs/manual.md)**.
 
+La esfera del reloj se compila con el Android SDK y se instala por ADB Wi-Fi
+([guía](wear/README.md)):
+
+```bash
+make wear-install   # compila wear/ e instala la esfera en el reloj conectado con adb
+```
+
 ## Calidad
 
 | Aspecto | Cómo |
@@ -160,7 +178,7 @@ paso, las opciones y las entidades de cada app están en el **[manual de uso](do
 | Cobertura | > 90 % en total y 100 % en indicadores y estrategia |
 | Tipos y estilo | `mypy --strict`, Ruff |
 | Seguridad | Bandit, pip-audit y escaneo de secretos |
-| CI | GitHub Actions: lo anterior y las imágenes de las tres apps para amd64 y arm64 |
+| CI | GitHub Actions: lo anterior, las imágenes de las tres apps para amd64 y arm64, y la esfera validada con el esquema oficial de Google y compilada |
 
 ```bash
 make check    # lint + tipos + tests + auditoría
@@ -170,6 +188,7 @@ make check    # lint + tipos + tests + auditoría
 
 - [Manual de uso](docs/manual.md): instalación, opciones, entidades y uso de las tres apps.
 - [Bitácora OKX](okx_journal/DOCS.md): requisitos, MariaDB y cómo calcula.
+- [Apps de reloj](wear/README.md): la esfera, cómo instalarla y cómo añadir más apps de Wear OS.
 - [Validación](docs/validation.md) e [investigación](docs/research/) de la estrategia.
 - [Decisiones de diseño](docs/adr/).
 
