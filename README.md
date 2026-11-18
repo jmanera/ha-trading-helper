@@ -154,7 +154,7 @@ paso, las opciones y las entidades de cada app están en el **[manual de uso](do
 
 ## Calidad
 
-| | |
+| Aspecto | Cómo |
 |---|---|
 | Tests | unitarios, de propiedades (Hypothesis) e integración con Mosquitto y MariaDB reales en Docker |
 | Cobertura | > 90 % en total y 100 % en indicadores y estrategia |
