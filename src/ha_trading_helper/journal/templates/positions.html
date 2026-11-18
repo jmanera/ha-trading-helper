@@ -43,7 +43,7 @@
   {% endfor %}
   </tbody>
 </table>
-{% if pos.dust %}<p class="small muted">{{ pos.dust }} restos de menos de 0,01 USDC no se muestran.</p>{% endif %}
+{% if pos.dust %}<p class="small muted">{{ pos.dust }} {{ 'resto' if pos.dust == 1 else 'restos' }} de menos de 0,01 USDC no se {{ 'muestra' if pos.dust == 1 else 'muestran' }}.</p>{% endif %}
 </div>
 
 {% if pos.bots %}
