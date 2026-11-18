@@ -1,0 +1,23 @@
+name: Fallo
+description: Algo no funciona como dice la documentación
+labels: [bug]
+body:
+  - type: dropdown
+    id: app
+    attributes:
+      label: App
+      options: [Señales cripto, Monitor intradía, Bitácora OKX, Otra / no sé]
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: Qué pasa
+      description: Qué esperabas y qué ocurrió. Si hay un error en el registro de la app, pégalo (sin claves ni contraseñas).
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Versiones
+      placeholder: "app 0.1.0 · Home Assistant 2026.11 · Raspberry Pi 4"

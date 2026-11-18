@@ -32,7 +32,7 @@
       <td>{{ a.qty | qty }}</td>
       <td>{{ a.px | price }}</td>
       <td>{{ a.value | money }}</td>
-      <td class="l"><div class="meter" title="{{ a.share | pct }}"><b style="width: {{ (a.share * 100) | round(1) }}%"></b></div><span class="small muted">{{ a.share | pct(1) }}</span></td>
+      <td class="l"><div class="meter" title="{{ (a.share * 100) | money(1) }} %"><b style="width: {{ (a.share * 100) | round(1) }}%"></b></div><span class="small muted">{{ (a.share * 100) | money(1) }} %</span></td>
       <td class="{{ a.change_today | tone }}">{{ a.change_today | signed }}</td>
     </tr>
   {% else %}
@@ -40,7 +40,7 @@
   {% endfor %}
   </tbody>
 </table>
-{% if ov.dust %}<p class="small muted">Además hay {{ ov.dust }} restos de menos de 0,01 USDC que no se muestran.</p>{% endif %}
+{% if ov.dust %}<p class="small muted">Además hay {{ ov.dust }} {{ 'resto' if ov.dust == 1 else 'restos' }} de menos de 0,01 USDC que no se {{ 'muestra' if ov.dust == 1 else 'muestran' }}.</p>{% endif %}
 <p class="small muted">«Cambio desde ayer» es la cantidad de hoy por lo que ha variado el precio desde el cierre de ayer: una aproximación que no tiene en cuenta las compras y ventas de hoy.</p>
 </div>
 {% endblock %}
