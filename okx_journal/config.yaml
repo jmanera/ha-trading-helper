@@ -1,0 +1,49 @@
+name: Bitácora OKX
+version: "0.1.0"
+slug: okx_journal
+description: Panel de tu cuenta spot de OKX (solo lectura) con posiciones, comisiones, rendimiento por periodos y notas. Guarda el histórico en MariaDB.
+url: https://github.com/jmanera/ha-trading-helper
+arch:
+  - amd64
+  - aarch64
+init: false
+startup: application
+boot: auto
+ingress: true
+ingress_port: 8099
+panel_icon: mdi:notebook-edit
+panel_title: Bitácora OKX
+services:
+  - mqtt:want
+options:
+  okx_domain: eea.okx.com
+  okx_api_key: ""
+  okx_api_secret: ""
+  okx_passphrase: ""
+  db_host: core-mariadb
+  db_port: 3306
+  db_name: okx_journal
+  db_user: ""
+  db_password: ""
+  sync_minutes: 5
+  timezone: Europe/Madrid
+  mqtt_enabled: true
+  log_level: INFO
+schema:
+  okx_domain: list(www.okx.com|eea.okx.com|my.okx.com|us.okx.com)
+  okx_api_key: str
+  okx_api_secret: password
+  okx_passphrase: password
+  db_host: str?
+  db_port: port
+  db_name: str
+  db_user: str?
+  db_password: password?
+  sync_minutes: int(1,60)
+  timezone: str
+  mqtt_enabled: bool
+  log_level: list(DEBUG|INFO|WARNING|ERROR)
+  mqtt_host: str?
+  mqtt_port: port?
+  mqtt_username: str?
+  mqtt_password: password?  # pragma: allowlist secret

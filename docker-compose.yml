@@ -37,5 +37,38 @@ services:
     depends_on: [mosquitto]
     restart: unless-stopped
 
+  # Bitácora OKX on http://localhost:8099 (set HTH_OKX_* and HTH_OKX_DOMAIN in .env).
+  mariadb:
+    image: mariadb:11
+    environment:
+      MARIADB_DATABASE: okx_journal
+      MARIADB_USER: okx_journal
+      MARIADB_PASSWORD: okx_journal  # local development only
+      MARIADB_RANDOM_ROOT_PASSWORD: "1"
+    volumes:
+      - mariadb:/var/lib/mysql
+    restart: unless-stopped
+
+  journal:
+    build:
+      context: .
+      dockerfile: okx_journal/Dockerfile
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      HTH_MQTT_HOST: mosquitto
+      HTH_DATA_DIR: /data
+      HTH_DB_HOST: mariadb
+      HTH_DB_USER: okx_journal
+      HTH_DB_PASSWORD: okx_journal
+    ports:
+      - "8099:8099"
+    volumes:
+      - ./.data:/data
+    depends_on: [mosquitto, mariadb]
+    restart: unless-stopped
+
 volumes:
   ha-config:
+  mariadb:
