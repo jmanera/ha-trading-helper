@@ -136,6 +136,34 @@ procesa en orden. `ha-trading-helper intraday status` resume la medición desde 
 local. Panel y aviso de ejemplo: [dashboards/intraday_monitor.yaml](dashboards/intraday_monitor.yaml)
 y [dashboards/automations/intraday_monitor.yaml](dashboards/automations/intraday_monitor.yaml).
 
+## Bitácora OKX (tercera app)
+
+[okx_journal/](okx_journal/) es un panel de **tu** cuenta spot de OKX que se abre desde la barra
+lateral de Home Assistant. Usa una clave de API **de solo lectura**: no opera ni mueve nada.
+
+- **Hoy**: valor de la cuenta, resultado del día y desde el inicio, comisiones y reparto por
+  activo.
+- **Posiciones**: cantidad, coste medio FIFO, invertido, valor y resultado neto de comisiones
+  (las pagadas al comprar y la que pagarías al vender), con cada compra abierta (maker o
+  taker, % pagado), las órdenes abiertas y los bots grid.
+- **Rendimiento**: cualquier periodo (7 d, 30 d, mes, año, todo o fechas libres) con resultado
+  neto sin contar el dinero aportado, rentabilidad ponderada en el tiempo, caída máxima, curva
+  del valor frente a lo aportado, resultado diario y tabla mensual.
+- **Activos**: cada valor en el que has invertido y lo que te ha aportado, con aciertos y
+  tiempo medio en posición.
+- **Bitácora**: órdenes y movimientos con filtros y notas propias.
+
+Guarda el histórico en MariaDB (la app oficial de Home Assistant) o en SQLite, porque la API de
+OKX solo da los últimos 3 meses y no guarda el valor pasado de la cuenta. Detalle:
+[okx_journal/DOCS.md](okx_journal/DOCS.md) y [docs/adr/0003-bitacora-okx.md](docs/adr/0003-bitacora-okx.md).
+
+```bash
+# .env: HTH_OKX_API_KEY, HTH_OKX_API_SECRET, HTH_OKX_PASSPHRASE, HTH_OKX_DOMAIN=eea.okx.com
+uv run ha-trading-helper journal sync     # trae los datos una vez
+uv run ha-trading-helper journal status   # resumen desde la base de datos
+make journal                              # panel en http://localhost:8099
+```
+
 ## Uso en local
 
 Requisitos: [uv](https://docs.astral.sh/uv/) (instala Python 3.12 por ti) y Docker para el
@@ -163,7 +191,7 @@ Home Assistant, desde la pestaña de configuración de la app.
 ## Instalación en Home Assistant (app local)
 
 ```bash
-make app-bundle          # crea dist/ha_trading_helper/
+make app-bundle          # crea dist/ha_trading_helper/, dist/intraday_monitor/ y dist/okx_journal/
 ```
 
 1. Copia `dist/ha_trading_helper/` a la carpeta de apps locales de Home Assistant: `/addons/` (Samba) o `/local_apps/` por SSH en versiones recientes.
@@ -187,8 +215,10 @@ src/ha_trading_helper/
   strategy/     reglas, puntuación, riesgo, explicación, señal
   backtest/     motor, métricas, walk-forward
   publish/      payloads MQTT Discovery, publicador con last-will
+  intraday/     monitor intradía (segunda app)
+  journal/      bitácora OKX: cliente de solo lectura, base de datos, FIFO, rendimiento, web
   service.py    ciclo de análisis      scheduler.py  modo servicio      cli.py
-trading_helper/  app de Home Assistant (config.yaml, Dockerfile, traducciones)
+trading_helper/  intraday_monitor/  okx_journal/   apps de Home Assistant (config.yaml, Dockerfile, traducciones)
 ```
 
 `indicators/` y `strategy/` no tocan red ni reloj y tienen cobertura del 100 %. La CI

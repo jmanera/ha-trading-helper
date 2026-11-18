@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Bitácora</h1>
+<p class="lead">Todas tus órdenes y movimientos, del más reciente al más antiguo. Añade a cada uno por qué lo hiciste y qué salió: es lo que convierte el historial en algo de lo que aprender.</p>
+
+<form class="inline" method="get" action="{{ base }}/bitacora">
+  <label>Activo<select name="activo"><option value="">Todos</option>{% for c in ccys %}<option {{ 'selected' if f.activo == c }}>{{ c }}</option>{% endfor %}</select></label>
+  <label>Tipo<select name="tipo"><option value="">Todos</option>{% for k, label in kinds.items() if k not in ('fee', 'opening') %}<option value="{{ k }}" {{ 'selected' if f.tipo == k }}>{{ label }}</option>{% endfor %}</select></label>
+  <label>Desde<input type="date" name="desde" value="{{ f.desde }}"></label>
+  <label>Hasta<input type="date" name="hasta" value="{{ f.hasta }}"></label>
+  <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" name="restos" value="true" {{ 'checked' if f.restos }}>incluir restos de menos de 0,01</label>
+  <button type="submit">Filtrar</button>
+  {% if f.activo or f.tipo or f.desde or f.hasta or f.restos %}<a href="{{ base }}/bitacora" class="small">quitar filtros</a>{% endif %}
+</form>
+
+<div class="panel scroll" style="margin-top:12px">
+<table>
+  <thead><tr><th>Fecha</th><th class="l">Qué</th><th>Cantidad</th><th>Precio</th><th>Importe</th><th>Comisión</th><th>Resultado</th><th class="l">Notas</th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+    <tr>
+      <td>{{ r.ts | when('%d/%m/%Y') }}<div class="small muted">{{ r.ts | when('%H:%M') }}</div></td>
+      <td class="l"><span class="chip {{ 'pos' if r.side == 'buy' else ('neg' if r.side == 'sell' else '') }}">{{ r.label }}</span> <b>{{ r.inst_id or r.ccy }}</b>
+        <div class="small muted">{% if r.ord_type %}{{ r.ord_type }} · {% endif %}{% if r.liquidity %}{{ r.liquidity }}{% endif %}{% if r.estimated %} <span class="est" title="Valor estimado con el cierre del día">≈</span>{% endif %}</div></td>
+      <td>{{ r.qty | qty }} <span class="small muted">{{ r.ccy }}</span></td>
+      <td>{{ r.price | price }}</td>
+      <td>{{ r.value | money }}</td>
+      <td>{% if r.fee %}{{ r.fee | money(4) }}{% if r.fee_rate %}<div class="small muted">{{ r.fee_rate | pct(2) }}</div>{% endif %}{% endif %}</td>
+      <td class="{{ r.pnl | tone }}">{{ r.pnl | signed if r.pnl is not none else '' }}</td>
+      <td class="l">
+        <details><summary>{{ 'editar' if r.note or r.tags else 'añadir' }}</summary>
+          <form method="post" action="{{ base }}/nota"><input type="hidden" name="ref" value="{{ r.ref }}"><input type="hidden" name="back" value="{{ here }}">
+            <textarea name="text" placeholder="Por qué, plan, qué salió…">{{ r.note }}</textarea>
+            <input name="tags" value="{{ r.tags }}" placeholder="etiquetas: ruptura, impulso…" style="width:100%;margin:6px 0">
+            <button type="submit">Guardar</button></form>
+        </details>
+        {% if r.note %}<div class="note small">{{ r.note }}</div>{% endif %}
+        {% if r.tags %}{% for t in r.tags.split(',') if t.strip() %}<span class="chip">{{ t.strip() }}</span> {% endfor %}{% endif %}
+      </td>
+    </tr>
+  {% else %}
+    <tr><td colspan="8" class="muted">No hay nada con esos filtros.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+<p class="small muted">«Resultado» es el beneficio de cada venta según FIFO, después de las comisiones de compra y de venta. En las salidas a financiación, la cuenta «vende» al precio de ese momento.</p>
+</div>
+{% endblock %}

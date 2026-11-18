@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Activos</h1>
+<p class="lead">Cada valor en el que has invertido y lo que te ha aportado: el beneficio cerrado de lo vendido más el abierto de lo que aún tienes. Las comisiones ya están dentro del resultado; se muestran aparte para que veas cuánto pesan.</p>
+
+<div class="cards">
+  <div class="card"><div class="k">Resultado total</div><div class="v {{ total | tone }}">{{ total | signed }}</div><div class="s">USDC, cerrado + abierto + bots</div></div>
+  <div class="card"><div class="k">Comisiones</div><div class="v">{{ fees | money }}</div></div>
+  <div class="card"><div class="k">Valores</div><div class="v">{{ rows | length }}</div><div class="s">{{ rows | selectattr('total', 'gt', 0) | list | length }} con beneficio</div></div>
+</div>
+
+<div class="panel scroll" style="margin-top:16px">
+<table>
+  <thead><tr><th>Activo</th><th>Comprado</th><th>Vendido</th><th>Cerrado</th><th>Abierto</th><th>Total</th><th>Sobre lo comprado</th><th>Comisiones</th><th>Órdenes</th><th>Aciertos</th><th>Tiempo medio</th><th class="l">Nota</th></tr></thead>
+  <tbody>
+  {% for r in rows | reverse %}
+    <tr>
+      <td><a href="{{ base }}/bitacora?activo={{ r.ccy if not r.is_bot else '' }}"><b>{{ r.ccy }}</b></a>{% if r.held_qty %} <span class="chip">abierta</span>{% endif %}<div class="small muted">{{ r.first_ts | when('%d/%m') }}{% if r.last_ts and r.last_ts != r.first_ts %} – {{ r.last_ts | when('%d/%m') }}{% endif %}</div></td>
+      <td>{{ r.bought | money }}</td>
+      <td>{{ r.sold | money }}</td>
+      <td class="{{ r.realized | tone }}">{{ r.realized | signed }}</td>
+      <td class="{{ r.unrealized | tone }}">{{ r.unrealized | signed if r.unrealized else '' }}</td>
+      <td class="{{ r.total | tone }}"><b>{{ r.total | signed }}</b></td>
+      <td class="{{ r.return_pct | tone }}">{{ r.return_pct | pct }}</td>
+      <td>{{ r.fees | money(4) if r.fees else '' }}</td>
+      <td>{{ r.orders or '' }}</td>
+      <td>{% if r.win_rate is not none %}{{ r.wins }}/{{ r.closed }}{% endif %}</td>
+      <td>{{ r.hold_ms | duration if r.closed else '' }}</td>
+      <td class="l">
+        {% if not r.is_bot %}
+        <details><summary>{{ 'ver' if r.note else 'añadir' }}</summary>
+          <form method="post" action="{{ base }}/nota"><input type="hidden" name="ref" value="asset:{{ r.ccy }}"><input type="hidden" name="back" value="{{ here }}">
+            <textarea name="text" placeholder="Por qué lo elegiste, qué aprendiste…">{{ r.note }}</textarea><button type="submit">Guardar</button></form>
+        </details>
+        {% if r.note %}<div class="note small">{{ r.note }}</div>{% endif %}
+        {% endif %}
+      </td>
+    </tr>
+  {% else %}
+    <tr><td colspan="12" class="muted">Aún no hay operaciones.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+<p class="small muted">«Aciertos» cuenta las ventas con beneficio. «Tiempo medio» es lo que estuvo comprado lo que vendiste. «Sobre lo comprado» divide el resultado total entre todo lo que has comprado de ese valor.</p>
+</div>
+{% endblock %}

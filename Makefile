@@ -1,4 +1,4 @@
-.PHONY: help install check lint typecheck test test-all security run scan validate up down app-bundle clean
+.PHONY: help install check lint typecheck test test-all security run scan validate journal up down app-bundle clean
 
 UV ?= uv
 
@@ -40,6 +40,9 @@ validate:  ## Walk-forward validation (2 years)
 run:  ## Long-running service (needs an MQTT broker)
 	$(UV) run ha-trading-helper serve
 
+journal:  ## Journal web panel + sync on http://localhost:8099 (needs OKX read-only keys)
+	$(UV) run ha-trading-helper journal serve
+
 up:  ## Mosquitto + Home Assistant + app with Docker Compose
 	docker compose up --build -d
 
@@ -47,13 +50,13 @@ down:
 	docker compose down
 
 app-bundle:  ## Self-contained app folders for /addons (/local_apps) on Home Assistant
-	for app in ha_trading_helper:trading_helper intraday_monitor:intraday_monitor; do \
+	for app in ha_trading_helper:trading_helper intraday_monitor:intraday_monitor okx_journal:okx_journal; do \
 		out=dist/$${app%%:*}; src=$${app##*:}; \
 		rm -rf $$out && mkdir -p $$out && cp -r $$src/. $$out/ && \
 		cp -r pyproject.toml uv.lock README.md src $$out/ && \
 		find $$out -name '__pycache__' -prune -exec rm -rf {} + ; \
 	done
-	@echo "Copy dist/ha_trading_helper and dist/intraday_monitor to /addons/ on Home Assistant"
+	@echo "Copy dist/ha_trading_helper, dist/intraday_monitor and dist/okx_journal to /addons/ on Home Assistant"
 
 clean:
 	rm -rf dist .pytest_cache .mypy_cache .ruff_cache .coverage coverage.xml htmlcov

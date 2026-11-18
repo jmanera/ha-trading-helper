@@ -1,0 +1,43 @@
+configuration:
+  okx_domain:
+    name: Dominio de OKX
+    description: El de tu cuenta. Las cuentas de España y del resto del EEE están en eea.okx.com; con otro dominio OKX responde «API key doesn't exist».
+  okx_api_key:
+    name: Clave de API de OKX
+    description: Crea una clave solo con permiso de lectura (Read). La app nunca opera.
+  okx_api_secret:
+    name: Secreto de la clave
+  okx_passphrase:
+    name: Contraseña de la clave (passphrase)
+  db_host:
+    name: Servidor MariaDB
+    description: core-mariadb para la app MariaDB de Home Assistant. Vacío = SQLite dentro de la app (sin MariaDB).
+  db_port:
+    name: Puerto MariaDB
+  db_name:
+    name: Base de datos
+    description: Créala en las opciones de la app MariaDB (databases) y da permisos al usuario (rights).
+  db_user:
+    name: Usuario MariaDB
+  db_password:
+    name: Contraseña MariaDB
+  sync_minutes:
+    name: Sincronizar cada (minutos)
+    description: Cada cuánto se leen de OKX saldos, operaciones y órdenes y se guarda una foto del valor de la cuenta.
+  timezone:
+    name: Zona horaria
+    description: Para mostrar fechas y horas. Los días del rendimiento se cuentan siempre en UTC, como los cierres diarios de OKX.
+  mqtt_enabled:
+    name: Publicar sensores en MQTT
+    description: Valor de la cuenta, resultado de hoy y de 30 días, comisiones y posiciones abiertas.
+  log_level:
+    name: Nivel de registro
+  mqtt_host:
+    name: Servidor MQTT
+    description: Solo si no usas la app Mosquitto de Home Assistant.
+  mqtt_port:
+    name: Puerto MQTT
+  mqtt_username:
+    name: Usuario MQTT
+  mqtt_password:
+    name: Contraseña MQTT

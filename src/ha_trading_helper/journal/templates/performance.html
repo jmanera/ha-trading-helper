@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Rendimiento</h1>
+<p class="lead">Cuánto has ganado o perdido en un periodo sin contar el dinero que metes o sacas. La rentabilidad es ponderada en el tiempo: encadena el rendimiento de cada día para que una aportación grande no cambie el porcentaje.</p>
+
+<div class="tabs">
+  {% for k, label in periods.items() %}<a href="{{ base }}/rendimiento?periodo={{ k }}" class="{{ 'on' if view.key == k }}">{{ label }}</a>{% endfor %}
+</div>
+<form class="inline" method="get" action="{{ base }}/rendimiento">
+  <label>Desde<input type="date" name="desde" value="{{ view.start.isoformat() }}"></label>
+  <label>Hasta<input type="date" name="hasta" value="{{ view.end.isoformat() }}"></label>
+  <button type="submit">Ver periodo</button>
+</form>
+
+{% set p = view.perf %}
+{% if p %}
+<h2>Del {{ p.start.strftime('%d/%m/%Y') }} al {{ p.end.strftime('%d/%m/%Y') }}</h2>
+<div class="cards">
+  <div class="card"><div class="k">Resultado neto</div><div class="v {{ p.profit | tone }}">{{ p.profit | signed }}</div><div class="s">USDC · {{ p.profit_pct_of_capital | pct }} del capital</div></div>
+  <div class="card"><div class="k">Rentabilidad (TWR)</div><div class="v {{ p.twr | tone }}">{{ p.twr | pct }}</div><div class="s">caída máxima {{ p.max_drawdown | pct }}</div></div>
+  <div class="card"><div class="k">Valor inicial → final</div><div class="v">{{ p.end_equity | money }}</div><div class="s">desde {{ p.start_equity | money }}</div></div>
+  <div class="card"><div class="k">Dinero aportado</div><div class="v">{{ p.net_flow | signed }}</div><div class="s">entradas {{ p.deposits | money }} · salidas {{ (-p.withdrawals) | money }}</div></div>
+</div>
+<div class="cards" style="margin-top:12px">
+  <div class="card"><div class="k">Beneficio cerrado</div><div class="v {{ view.realized | tone }}">{{ view.realized | signed }}</div><div class="s">ventas del periodo, FIFO</div></div>
+  <div class="card"><div class="k">Comisiones</div><div class="v">{{ view.fees | money }}</div><div class="s">maker {{ view.maker_fees | money }} · taker {{ view.taker_fees | money }}</div></div>
+  <div class="card"><div class="k">Órdenes</div><div class="v">{{ view.trades }}</div><div class="s">volumen {{ view.volume | money }}</div></div>
+  <div class="card"><div class="k">Mejor / peor día</div><div class="v small" style="font-size:16px">{% if p.best %}<span class="pos">{{ p.best.pnl | signed }}</span> {{ p.best.day.strftime('%d/%m') }}{% else %}—{% endif %}</div><div class="s">{% if p.worst %}<span class="neg">{{ p.worst.pnl | signed }}</span> {{ p.worst.day.strftime('%d/%m') }}{% endif %}</div></div>
+</div>
+{% if p.estimated %}<p class="small muted">≈ Los días anteriores a la instalación se han reconstruido con los movimientos de OKX y el precio de cierre de cada día; los bots se cuentan por lo invertido. Desde que la app guarda una foto cada pocos minutos, el valor es el real.</p>{% endif %}
+
+<h2>Valor de la cuenta</h2>
+<div class="panel">{{ chart_equity | safe }}
+  <div class="legend"><span><i style="background:var(--accent)"></i>Valor</span><span><i style="background:var(--second)"></i>Dinero aportado (valor inicial + entradas − salidas)</span></div>
+</div>
+<h2>Resultado de cada día</h2>
+<div class="panel">{{ chart_pnl | safe }}</div>
+
+<h2>Por meses</h2>
+<div class="panel scroll"><table>
+  <thead><tr><th>Mes</th><th>Resultado</th><th>Rentabilidad</th><th>Aportado</th><th>Valor al cierre</th></tr></thead>
+  {% for m in p.months %}<tr><td>{{ m.month }}</td><td class="{{ m.pnl | tone }}">{{ m.pnl | signed }}</td><td class="{{ m.twr | tone }}">{{ m.twr | pct }}</td><td>{{ m.flow | signed }}</td><td>{{ m.end_equity | money }}</td></tr>{% endfor %}
+</table></div>
+
+<h2>Día a día</h2>
+<div class="panel scroll"><table>
+  <thead><tr><th>Día</th><th>Valor</th><th>Aportado</th><th>Resultado</th><th>Rentabilidad</th><th>Desde el máximo</th></tr></thead>
+  {% for d in p.days | reverse %}<tr><td>{{ d.day.strftime('%d/%m/%Y') }}{% if d.estimated %} <span class="est" title="Reconstruido">≈</span>{% endif %}</td><td>{{ d.equity | money }}</td><td>{{ d.flow | signed if d.flow else '' }}</td><td class="{{ d.pnl | tone }}">{{ d.pnl | signed }}</td><td class="{{ d.ret | tone }}">{{ d.ret | pct }}</td><td class="{{ d.drawdown | tone }}">{{ d.drawdown | pct if d.drawdown < 0 else '' }}</td></tr>{% endfor %}
+</table></div>
+{% else %}
+<p class="muted">No hay datos en ese periodo.</p>
+{% endif %}
+{% endblock %}

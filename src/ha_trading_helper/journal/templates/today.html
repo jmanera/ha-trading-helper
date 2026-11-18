@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Hoy</h1>
+<p class="lead">Valor de tu cuenta de trading spot ahora mismo y cómo ha cambiado desde el cierre de ayer (00:00 UTC). El resultado del día descuenta el dinero que hayas metido o sacado hoy.</p>
+
+<div class="cards">
+  <div class="card"><div class="k">Valor de la cuenta</div><div class="v">{{ ov.equity | money }}</div><div class="s">USDC · ayer {{ ov.yesterday | money }}</div></div>
+  <div class="card"><div class="k">Resultado de hoy</div><div class="v {{ ov.pnl_today | tone }}">{{ ov.pnl_today | signed }}</div><div class="s {{ ov.pct_today | tone }}">{{ ov.pct_today | pct }}{% if ov.flow_today %} · aportado hoy {{ ov.flow_today | signed }}{% endif %}</div></div>
+  <div class="card"><div class="k">Resultado desde el inicio</div><div class="v {{ ov.profit_all | tone }}">{{ ov.profit_all | signed }}</div><div class="s">dinero aportado neto {{ ov.deposits_all | money }}</div></div>
+  <div class="card"><div class="k">Comisiones pagadas</div><div class="v">{{ ov.fees_all | money }}</div><div class="s">desde el inicio de los datos</div></div>
+</div>
+
+<div class="cards" style="margin-top:12px">
+  <div class="card"><div class="k">Beneficio cerrado (ventas)</div><div class="v {{ ov.realized_all | tone }}">{{ ov.realized_all | signed }}</div><div class="s">FIFO, comisiones incluidas</div></div>
+  <div class="card"><div class="k">Beneficio abierto (posiciones)</div><div class="v {{ ov.unrealized | tone }}">{{ ov.unrealized | signed }}</div><div class="s">si vendieras al precio actual</div></div>
+  <div class="card"><div class="k">Resultado de los bots</div><div class="v {{ ov.bots_pnl | tone }}">{{ ov.bots_pnl | signed }}</div><div class="s">según OKX</div></div>
+</div>
+
+{% if chart %}
+<h2>Últimos 30 días</h2>
+<div class="panel">{{ chart | safe }}</div>
+{% endif %}
+
+<h2>Qué tienes</h2>
+<div class="panel scroll">
+<table>
+  <thead><tr><th>Activo</th><th>Cantidad</th><th>Precio</th><th>Valor</th><th class="l">Peso</th><th>Cambio desde ayer</th></tr></thead>
+  <tbody>
+  {% for a in ov.assets %}
+    <tr>
+      <td><b>{{ a.ccy }}</b>{% if a.in_bots %} <span class="chip">{{ a.in_bots | qty }} en bots</span>{% endif %}</td>
+      <td>{{ a.qty | qty }}</td>
+      <td>{{ a.px | price }}</td>
+      <td>{{ a.value | money }}</td>
+      <td class="l"><div class="meter" title="{{ a.share | pct }}"><b style="width: {{ (a.share * 100) | round(1) }}%"></b></div><span class="small muted">{{ a.share | pct(1) }}</span></td>
+      <td class="{{ a.change_today | tone }}">{{ a.change_today | signed }}</td>
+    </tr>
+  {% else %}
+    <tr><td colspan="6" class="muted">Aún no hay saldos. Pulsa «Sincronizar ahora».</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% if ov.dust %}<p class="small muted">Además hay {{ ov.dust }} restos de menos de 0,01 USDC que no se muestran.</p>{% endif %}
+<p class="small muted">«Cambio desde ayer» es la cantidad de hoy por lo que ha variado el precio desde el cierre de ayer: una aproximación que no tiene en cuenta las compras y ventas de hoy.</p>
+</div>
+{% endblock %}

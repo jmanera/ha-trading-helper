@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Posiciones abiertas</h1>
+<p class="lead">Lo que tienes comprado ahora. El coste sale de las compras que siguen abiertas según FIFO (primero en entrar, primero en salir), con su comisión dentro. «Neto» descuenta también la comisión que pagarías al vender ahora como taker.</p>
+
+<div class="cards">
+  <div class="card"><div class="k">Invertido</div><div class="v">{{ pos.cost | money }}</div><div class="s">USDC, bots incluidos</div></div>
+  <div class="card"><div class="k">Valor actual</div><div class="v">{{ pos.value | money }}</div></div>
+  <div class="card"><div class="k">Resultado neto</div><div class="v {{ pos.unrealized_net | tone }}">{{ pos.unrealized_net | signed }}</div><div class="s">tras comisiones de compra y venta</div></div>
+</div>
+
+<h2>Spot</h2>
+<div class="panel scroll">
+<table>
+  <thead><tr><th>Activo</th><th>Cantidad</th><th>Coste medio</th><th>Precio</th><th>Invertido</th><th>Valor</th><th>Comisiones</th><th>Resultado neto</th><th class="l">Detalle</th></tr></thead>
+  <tbody>
+  {% for p in pos.rows %}
+    <tr>
+      <td><b>{{ p.ccy }}</b>{% if p.estimated %} <span class="est" title="Parte del coste es estimada (llegó por transferencia o antes de los datos)">≈</span>{% endif %}<div class="small muted">desde {{ p.first_ts | when('%d/%m') }}</div></td>
+      <td>{{ p.qty | qty }}</td>
+      <td>{{ p.avg_cost | price }}</td>
+      <td>{{ p.px | price }}</td>
+      <td>{{ p.cost | money }}</td>
+      <td>{{ p.value | money }}</td>
+      <td><span title="Pagadas al comprar">{{ p.buy_fees | money(4) }}</span><div class="small muted" title="Si vendieras ahora como taker">+{{ p.exit_fee | money(4) }} al vender ({{ p.taker_rate | pct(2) }})</div></td>
+      <td class="{{ p.unrealized_net | tone }}">{{ p.unrealized_net | signed }}<div class="small">{{ p.pct | pct }}</div><div class="small muted">bruto {{ p.unrealized_gross | signed }}</div></td>
+      <td class="l">
+        <details><summary>{{ p.lots | length }} compra{{ 's' if p.lots | length != 1 }}{% if p.orders %} · {{ p.orders | length }} orden{{ 'es' if p.orders | length != 1 }}{% endif %}</summary>
+          <table class="small">
+            <thead><tr><th>Fecha</th><th>Cantidad</th><th>Precio</th><th>Coste</th><th>Comisión</th><th class="l">Tipo</th></tr></thead>
+            {% for l in p.lots %}<tr><td>{{ l.ts | when('%d/%m %H:%M') }}</td><td>{{ l.qty | qty }}</td><td>{{ l.price | price }}</td><td>{{ l.cost | money }}</td><td>{{ l.fee | money(4) }}</td>
+              <td class="l">{% if l.exec_type == 'M' %}<span class="chip">Maker {{ l.fee_rate | pct(2) }}</span>{% elif l.exec_type == 'T' %}<span class="chip">Taker {{ l.fee_rate | pct(2) }}</span>{% else %}<span class="chip">{{ kinds.get(l.kind, l.kind) }}</span>{% endif %}{% if l.estimated %} <span class="est" title="Valor estimado con el cierre del día">≈</span>{% endif %}</td></tr>{% endfor %}
+          </table>
+          {% if p.orders %}<table class="small"><thead><tr><th>Orden</th><th>Lado</th><th>Precio</th><th>Disparo</th><th>Cantidad</th></tr></thead>
+            {% for o in p.orders %}<tr><td>{{ o.ord_type }}</td><td>{{ 'compra' if o.side == 'buy' else 'venta' }}</td><td>{{ o.px | price if o.px else 'mercado' }}</td><td>{{ o.trigger_px | price if o.trigger_px else '—' }}</td><td>{{ o.sz | qty }}</td></tr>{% endfor %}
+          </table>{% endif %}
+          <p class="small muted">Comisión de tu nivel en {{ p.inst_id }}: maker {{ p.maker_rate | pct(2) }} · taker {{ p.taker_rate | pct(2) }}</p>
+        </details>
+      </td>
+    </tr>
+  {% else %}
+    <tr><td colspan="9" class="muted">No tienes posiciones abiertas en spot.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% if pos.dust %}<p class="small muted">{{ pos.dust }} restos de menos de 0,01 USDC no se muestran.</p>{% endif %}
+</div>
+
+{% if pos.bots %}
+<h2>Bots</h2>
+<div class="panel scroll">
+<table>
+  <thead><tr><th>Bot</th><th>Desde</th><th>Invertido</th><th>Valor</th><th>De la rejilla</th><th>Flotante</th><th>Resultado</th></tr></thead>
+  <tbody>
+  {% for b in pos.bots %}
+    <tr><td><b>{{ b.bot.algo_type | capitalize }} {{ b.bot.inst_id }}</b></td><td>{{ b.bot.c_time | when('%d/%m %H:%M') }}</td><td>{{ b.bot.investment | money }}</td><td>{{ b.value | money }}</td>
+      <td class="{{ b.bot.grid_profit | tone }}">{{ b.bot.grid_profit | signed(4) }}</td><td class="{{ b.bot.float_profit | tone }}">{{ b.bot.float_profit | signed(4) }}</td>
+      <td class="{{ b.bot.total_pnl | tone }}">{{ b.bot.total_pnl | signed }}<div class="small">{{ b.pct | pct }}</div></td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+<p class="small muted">Las operaciones de los bots no cuentan como fills de la cuenta: su resultado es el que da OKX (beneficio de la rejilla + variación de lo que tiene comprado).</p>
+</div>
+{% endif %}
+
+{% if pos.orphan_orders %}
+<h2>Otras órdenes abiertas</h2>
+<div class="panel scroll"><table>
+  <thead><tr><th>Par</th><th>Tipo</th><th>Lado</th><th>Precio</th><th>Disparo</th><th>Cantidad</th><th>Desde</th></tr></thead>
+  {% for o in pos.orphan_orders %}<tr><td>{{ o.inst_id }}</td><td>{{ o.ord_type }}</td><td>{{ 'compra' if o.side == 'buy' else 'venta' }}</td><td>{{ o.px | price if o.px else 'mercado' }}</td><td>{{ o.trigger_px | price if o.trigger_px else '—' }}</td><td>{{ o.sz | qty }}</td><td>{{ o.c_time | when('%d/%m %H:%M') }}</td></tr>{% endfor %}
+</table></div>
+{% endif %}
+{% endblock %}

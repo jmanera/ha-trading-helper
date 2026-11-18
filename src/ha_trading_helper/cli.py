@@ -248,3 +248,56 @@ def intraday_status() -> None:
             typer.echo("  " + verdict(st, all_stats[CONTROLS[rule.key].key], started, now)[1])
     for start, end, note in store.gaps():
         typer.echo(f"Corte {start:%d/%m %H:%M} - {end:%d/%m %H:%M} UTC: {note}")
+
+
+journal_app = typer.Typer(no_args_is_help=True, help="Bitácora OKX (read-only account journal).")
+app.add_typer(journal_app, name="journal")
+
+
+@journal_app.command("serve")
+def journal_serve() -> None:
+    """Run forever: web panel, a sync every few minutes and MQTT sensors."""
+    from ha_trading_helper.ha_app import with_supervisor_mqtt
+    from ha_trading_helper.journal.config import JournalSettings
+    from ha_trading_helper.journal.service import JournalService
+
+    settings = JournalSettings()
+    if settings.mqtt_enabled:
+        settings = with_supervisor_mqtt(settings)
+    setup_logging(settings.log_level, json_logs=True)
+    asyncio.run(JournalService(settings).run_forever())
+
+
+@journal_app.command("sync")
+def journal_sync() -> None:
+    """Bring the database up to date with OKX once and print the summary."""
+    from ha_trading_helper.journal.config import JournalSettings
+    from ha_trading_helper.journal.service import JournalService
+
+    settings = JournalSettings(mqtt_enabled=False)
+    setup_logging(settings.log_level)
+    result = asyncio.run(JournalService(settings).sync())
+    if result is None:
+        typer.echo("Faltan las claves de OKX (HTH_OKX_API_KEY, _SECRET, _PASSPHRASE).", err=True)
+        raise typer.Exit(1)
+    typer.echo(
+        f"Valor {result.equity:.2f} USDC · fills nuevos {result.new_fills} · "
+        f"movimientos {result.new_bills} · órdenes {result.new_orders} · "
+        f"cierres diarios {result.prices}"
+    )
+    for err in result.errors:
+        typer.echo(f"! {err}", err=True)
+
+
+@journal_app.command("status")
+def journal_status() -> None:
+    """Print the journal summary from the database (no network)."""
+    from ha_trading_helper.journal import payloads
+    from ha_trading_helper.journal.config import JournalSettings
+    from ha_trading_helper.journal.report import Data
+    from ha_trading_helper.journal.store import Store
+
+    settings = JournalSettings()
+    data = Data.load(Store(settings.db_url()))
+    for key, value in payloads.summary(data).items():
+        typer.echo(f"{key:<22} {value}")
