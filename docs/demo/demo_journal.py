@@ -124,6 +124,37 @@ class Account:
         )
 
 
+def canceled(closes: dict[str, dict[date, float]]) -> list[Order]:
+    """Limit orders that never filled and were cancelled, a few days apart."""
+    out = []
+    for i, (ccy, days_ago, side, gap) in enumerate(
+        [("SOL", 2, "buy", 0.95), ("BTC", 6, "sell", 1.06), ("ETH", 11, "buy", 0.93)]
+    ):
+        day = NOW.date() - timedelta(days=days_ago)
+        px = round(closes[ccy][day] * gap, 2)
+        sz = round(150 / px, 4)
+        at = ms(day, 11, 20)
+        out.append(
+            Order(
+                f"demo-c{i}",
+                f"{ccy}-USDC",
+                side,
+                "limit",
+                "canceled",
+                px,
+                sz,
+                None,
+                0.0,
+                0.0,
+                "",
+                "",
+                at,
+                at + 3 * 3_600_000,
+            )
+        )
+    return out
+
+
 def prices(rng: random.Random) -> dict[str, dict[date, float]]:
     out: dict[str, dict[date, float]] = {}
     for ccy, start_px in ASSETS.items():
@@ -185,7 +216,7 @@ def build(path: str) -> Store:
         store.add_snapshot(*snap)
     store.save_fills(acct.fills)
     store.save_bills(acct.bills)
-    store.save_orders(acct.orders)
+    store.save_orders(acct.orders + canceled(closes))
     for ccy, series in closes.items():
         store.save_prices(ccy, series)
     live = {c: s[NOW.date()] * 1.004 for c, s in closes.items()}
@@ -244,6 +275,30 @@ def build(path: str) -> Store:
                 0.0,
                 None,
                 ms(NOW.date(), 9),
+            ),
+            OpenOrder(
+                "demo-o2",
+                "order",
+                "ETH-USDC",
+                "buy",
+                "post_only",
+                round(live["ETH"] * 0.94, 2),
+                0.12,
+                0.0,
+                None,
+                ms(NOW.date() - timedelta(days=2), 20, 15),
+            ),
+            OpenOrder(
+                "demo-o3",
+                "order",
+                "LINK-USDC",
+                "buy",
+                "limit",
+                round(live["LINK"] * 0.97, 3),
+                12.0,
+                4.5,
+                None,
+                ms(NOW.date(), 7, 40),
             ),
             OpenOrder(
                 "demo-a1",

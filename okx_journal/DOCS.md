@@ -46,6 +46,12 @@ día con los movimientos y el precio de cierre diario.
   pagadas al comprar, la que pagarías al vender (tu nivel de taker) y el resultado neto. Al
   desplegar, cada compra que sigue abierta (maker o taker, % pagado) y las órdenes abiertas.
   También los bots grid con su resultado.
+- **Órdenes**: las abiertas (límite, solo maker, stops, OCO…) con su precio, el de mercado,
+  la distancia entre ambos, lo que ya se ha ejecutado, el importe y la comisión estimada (maker
+  si espera en el libro, taker si es de mercado o se activa con un disparo). Debajo, el
+  historial con filtros por activo, estado (ejecutadas o canceladas) y fechas, con precio
+  medio, comisión real y resultado de cada venta. OKX solo conserva unas horas las órdenes
+  canceladas sin ejecutar, así que la bitácora guarda las que llega a ver.
 - **Rendimiento**: periodos de 7, 30 y 90 días, este mes, este año, 12 meses, todo o un rango
   de fechas. Resultado neto, rentabilidad ponderada en el tiempo, caída máxima, comisiones
   (maker/taker), curva del valor frente al dinero aportado, resultado de cada día y tabla

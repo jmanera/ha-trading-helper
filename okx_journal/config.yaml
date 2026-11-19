@@ -1,5 +1,5 @@
 name: Bitácora OKX
-version: "0.1.0"
+version: "0.2.0"
 slug: okx_journal
 description: Panel de tu cuenta spot de OKX (solo lectura) con posiciones, comisiones, rendimiento por periodos y notas. Guarda el histórico en MariaDB.
 url: https://github.com/jmanera/ha-trading-helper

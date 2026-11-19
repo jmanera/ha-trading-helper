@@ -51,7 +51,7 @@ frente a un control al azar, para saber si tienen ventaja real.
 ### 📒 Bitácora OKX
 
 Panel de **tu cuenta** en la barra lateral de Home Assistant, de solo lectura: posiciones
-con coste FIFO y comisiones maker/taker, rendimiento neto de cualquier periodo, resultado
+con coste FIFO y comisiones maker/taker, órdenes abiertas e historial, rendimiento neto de cualquier periodo, resultado
 por activo y notas propias en cada operación. Guarda el histórico en MariaDB.
 
 </td>
@@ -65,6 +65,11 @@ por activo y notas propias en cada operación. Guarda el histórico en MariaDB.
 | [![Rendimiento](docs/img/journal-rendimiento.png)](docs/img/journal-rendimiento.png) | [![Posiciones](docs/img/journal-posiciones.png)](docs/img/journal-posiciones.png) |
 | **Resultado por activo** (modo oscuro) | **Bitácora con notas** |
 | [![Activos](docs/img/journal-oscuro.png)](docs/img/journal-oscuro.png) | [![Bitácora](docs/img/journal-bitacora.png)](docs/img/journal-bitacora.png) |
+
+**Órdenes abiertas e historial**: a qué distancia del precio está cada orden, cuánto moverían
+y su comisión estimada; debajo, las ejecutadas y las canceladas.
+
+[![Órdenes](docs/img/journal-ordenes.png)](docs/img/journal-ordenes.png)
 
 <table>
 <tr>
