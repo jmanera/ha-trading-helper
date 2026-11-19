@@ -58,6 +58,29 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  wear:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: astral-sh/setup-uv@v6
+      - name: Validate watch faces against the official Watch Face Format schema
+        run: |
+          curl -fsSL -o /tmp/wff-xsd.zip https://github.com/google/watchface/releases/download/release/wff-xsd.zip
+          mkdir -p /tmp/wff-xsd && unzip -q /tmp/wff-xsd.zip -d /tmp/wff-xsd
+          uv run --no-project --with xmlschema python wear/tools/validate_wff.py /tmp/wff-xsd
+      - name: Build the Wear OS apps (the runner image ships the Android SDK)
+        working-directory: wear
+        run: ./gradlew assembleRelease
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wear-apks
+          path: wear/*/build/outputs/apk/release/*.apk
+
   weekly-backtest:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest

@@ -13,6 +13,7 @@ capturas, mira el [README](../README.md).
 - [Operar desde Telegram](#operar-desde-telegram)
 - [Monitor intradía](#monitor-intradía-segunda-app)
 - [Bitácora OKX](#bitácora-okx-tercera-app)
+- [Esfera para el reloj](#esfera-para-el-reloj)
 - [Uso en local](#uso-en-local)
 - [Instalación en Home Assistant](#instalación-en-home-assistant-app-local)
 - [Desarrollo](#desarrollo)
@@ -149,6 +150,20 @@ uv run ha-trading-helper journal status   # resumen desde la base de datos
 make journal                              # panel en http://localhost:8099
 ```
 
+## Esfera para el reloj
+
+La esfera **Bitácora OKX** para Wear OS muestra en el reloj la hora, la fecha, el valor de la
+cuenta, el resultado de hoy (verde, rojo o blanco) y las posiciones abiertas, con los sensores de la Bitácora a
+través de la app de Home Assistant para el reloj. Se actualiza cada 15 minutos.
+
+```bash
+export ANDROID_HOME=$HOME/Android/Sdk
+make wear-install   # con el reloj conectado por adb
+```
+
+Instalación paso a paso, cómo asignar los sensores y cómo añadir más apps de reloj:
+[wear/README.md](../wear/README.md).
+
 ## Uso en local
 
 Requisitos: [uv](https://docs.astral.sh/uv/) (instala Python 3.12 por ti) y Docker para el
@@ -210,6 +225,7 @@ src/ha_trading_helper/
   journal/      bitácora OKX: cliente de solo lectura, base de datos, FIFO, rendimiento, web
   service.py    ciclo de análisis      scheduler.py  modo servicio      cli.py
 trading_helper/  intraday_monitor/  okx_journal/   apps de Home Assistant (config.yaml, Dockerfile, traducciones)
+wear/            apps de Wear OS, un módulo de Gradle cada una (okx-journal-face/: la esfera)
 ```
 
 `indicators/` y `strategy/` no tocan red ni reloj y tienen cobertura del 100 %. La CI

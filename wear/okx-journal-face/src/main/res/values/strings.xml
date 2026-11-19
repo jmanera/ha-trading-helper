@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="watch_face_name">Bitácora OKX</string>
+    <string name="slot_value">Valor de la cuenta</string>
+    <string name="slot_today">Resultado de hoy</string>
+    <string name="slot_positions">Posiciones abiertas</string>
+</resources>
