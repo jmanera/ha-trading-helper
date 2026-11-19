@@ -63,7 +63,10 @@ cada uno:
 2. Elige **Home Assistant → Estado de entidad** y el sensor de la tabla de arriba.
 3. Deja **sin unidad** cada complicación: la esfera ya pone «USDC», «hoy» y «posiciones».
 
-Si un hueco muestra `--`, todavía no tiene ninguna complicación asignada.
+Mientras un hueco no tenga sensor elegido, Home Assistant muestra «Estado de la entidad». Si
+muestra `--`, no tiene ninguna complicación asignada.
+
+Probada en un Galaxy Watch 5 (SM-R860) con Wear OS 6.
 
 ### Límites
 
@@ -71,6 +74,9 @@ Si un hueco muestra `--`, todavía no tiene ninguna complicación asignada.
   complicaciones, y Wear OS lo respeta para ahorrar batería.
 - El color del resultado se decide por el texto que manda Home Assistant: rojo si empieza por
   «-» o «−», blanco si es cero (`0`, `0,0`, `0,00`…), verde en cualquier otro caso.
+- Si el selector se queda «pensando» al aplicar una esfera, mira el registro del reloj
+  (`adb logcat | grep -E "IllegalArgument|WearServices"`): Wear OS rechaza la esfera ahí y el
+  selector no muestra el error. `wear/tools/validate_wff.py` detecta el caso más común.
 - Va firmado con la clave de depuración, que basta para instalarlo tú. Para publicarlo en
   Google Play haría falta tu propia clave y la revisión de Google.
 

@@ -2,7 +2,9 @@
 <!--
   Bitácora OKX watch face (Watch Face Format v2), 450 x 450, scaled to the screen.
 
-  Three Home Assistant "entity state" complications (short text, unit switched off):
+  Three Home Assistant "entity state" complications (short text, unit switched off). Each slot
+  also lists EMPTY: Wear OS rejects the face (and the picker hangs) unless the fallback
+  type of DefaultProviderPolicy is one of the slot's supportedTypes.
     slot 0  sensor.okx_journal_valor            account value, large, white
     slot 1  sensor.okx_journal_resultado_hoy    today's result: green, red or white
     slot 2  sensor.okx_journal_posiciones       open positions, white
@@ -53,7 +55,7 @@
 
     <!-- Slot 0: account value -->
     <ComplicationSlot slotId="0" displayName="slot_value" x="30" y="148" width="390" height="100"
-        supportedTypes="SHORT_TEXT" isCustomizable="TRUE">
+        supportedTypes="SHORT_TEXT EMPTY" isCustomizable="TRUE">
       <DefaultProviderPolicy
           defaultSystemProvider="EMPTY"
           defaultSystemProviderType="EMPTY"
@@ -83,7 +85,7 @@
 
     <!-- Slot 1: today's result, coloured by its sign -->
     <ComplicationSlot slotId="1" displayName="slot_today" x="58" y="276" width="160" height="60"
-        supportedTypes="SHORT_TEXT" isCustomizable="TRUE">
+        supportedTypes="SHORT_TEXT EMPTY" isCustomizable="TRUE">
       <DefaultProviderPolicy
           defaultSystemProvider="EMPTY"
           defaultSystemProviderType="EMPTY"
@@ -149,7 +151,7 @@
 
     <!-- Slot 2: open positions -->
     <ComplicationSlot slotId="2" displayName="slot_positions" x="232" y="276" width="160" height="60"
-        supportedTypes="SHORT_TEXT" isCustomizable="TRUE">
+        supportedTypes="SHORT_TEXT EMPTY" isCustomizable="TRUE">
       <DefaultProviderPolicy
           defaultSystemProvider="EMPTY"
           defaultSystemProviderType="EMPTY"

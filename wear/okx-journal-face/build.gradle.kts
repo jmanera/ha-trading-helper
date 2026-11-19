@@ -11,8 +11,8 @@ android {
         applicationId = "io.github.jmanera.hatradinghelper.okxjournalface"
         minSdk = 33 // Wear OS 4: Watch Face Format version 2
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.1.1"
     }
 
     buildTypes {
