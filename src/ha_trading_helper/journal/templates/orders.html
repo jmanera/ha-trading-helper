@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Órdenes</h1>
+<p class="lead">Las órdenes que tienes puestas en OKX y las que ya se cerraron. Una orden abierta todavía no ha movido dinero; cuando se ejecuta aparece también en la bitácora.</p>
+
+<div class="cards">
+  <div class="card"><div class="k">Órdenes abiertas</div><div class="v">{{ view.open | length }}</div><div class="s">límite, stops y demás</div></div>
+  <div class="card"><div class="k">Para comprar</div><div class="v">{{ view.buying | money }}</div><div class="s">USDC si se ejecutan todas</div></div>
+  <div class="card"><div class="k">Para vender</div><div class="v">{{ view.selling | money }}</div><div class="s">USDC a su precio</div></div>
+</div>
+
+<h2>Abiertas</h2>
+<div class="panel scroll">
+<table>
+  <thead><tr><th>Par</th><th class="l">Orden</th><th>Cantidad</th><th>Precio</th><th>Mercado</th><th>Distancia</th><th>Importe</th><th>Comisión</th><th>Desde</th></tr></thead>
+  <tbody>
+  {% for o in view.open %}
+    <tr>
+      <td style="white-space:nowrap"><b>{{ o.order.inst_id }}</b>{% if not o.has_position and o.order.side == 'sell' %}<div class="small muted">sin posición</div>{% endif %}</td>
+      <td class="l"><span class="chip {{ 'pos' if o.order.side == 'buy' else 'neg' }}">{{ 'Compra' if o.order.side == 'buy' else 'Venta' }}</span> {{ o.type_label }}</td>
+      <td>{{ o.remaining | qty }}{% if o.order.filled %}<div class="small muted">{{ (o.filled_pct * 100) | money(0) }} % ejecutado</div>{% endif %}</td>
+      <td>{% if o.order.px %}{{ o.order.px | price }}{% else %}<span class="muted">mercado</span>{% endif %}
+        {% if o.order.trigger_px %}<div class="small muted" title="Precio que activa la orden">disparo {{ o.order.trigger_px | price }}</div>{% endif %}</td>
+      <td>{{ o.market_px | price }}</td>
+      <td>{% if o.distance is not none %}{{ o.distance | pct(1) }}{% else %}—{% endif %}</td>
+      <td>{{ o.value | money }}</td>
+      <td>{% if o.fee is not none %}{{ o.fee | money(4) }}{% else %}—{% endif %}<div class="small muted">{{ 'maker' if o.maker else 'taker' }} {{ (o.fee_rate * 100) | money(2) }} %</div></td>
+      <td>{{ o.order.c_time | when('%d/%m/%Y') }}<div class="small muted">{{ o.order.c_time | when('%H:%M') }}</div></td>
+    </tr>
+  {% else %}
+    <tr><td colspan="9" class="muted">No tienes órdenes abiertas.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+<p class="small muted">«Distancia» es cuánto tiene que moverse el precio desde el actual para que la orden se ejecute o se active. La comisión es una estimación: maker para las órdenes límite que esperan en el libro, taker para las de mercado y las que se activan con un disparo.</p>
+</div>
+
+<h2>Historial</h2>
+<form class="inline" method="get" action="{{ base }}/ordenes">
+  <label>Activo<select name="activo"><option value="">Todos</option>{% for c in view.ccys %}<option {{ 'selected' if f.activo == c }}>{{ c }}</option>{% endfor %}</select></label>
+  <label>Estado<select name="estado"><option value="">Todas</option><option value="ejecutadas" {{ 'selected' if f.estado == 'ejecutadas' }}>Ejecutadas</option><option value="canceladas" {{ 'selected' if f.estado == 'canceladas' }}>Canceladas</option></select></label>
+  <label>Desde<input type="date" name="desde" value="{{ f.desde }}"></label>
+  <label>Hasta<input type="date" name="hasta" value="{{ f.hasta }}"></label>
+  <button type="submit">Filtrar</button>
+  {% if f.activo or f.estado or f.desde or f.hasta %}<a href="{{ base }}/ordenes" class="small">quitar filtros</a>{% endif %}
+</form>
+
+<div class="panel scroll" style="margin-top:12px">
+<table>
+  <thead><tr><th>Fecha</th><th class="l">Orden</th><th class="l">Estado</th><th>Cantidad</th><th>Precio</th><th>Precio medio</th><th>Importe</th><th>Comisión</th><th>Resultado</th></tr></thead>
+  <tbody>
+  {% for r in view.history %}
+    <tr>
+      <td>{{ r.order.c_time | when('%d/%m/%Y') }}<div class="small muted">{{ r.order.c_time | when('%H:%M') }}</div></td>
+      <td class="l"><span class="chip {{ 'pos' if r.order.side == 'buy' else 'neg' }}">{{ 'Compra' if r.order.side == 'buy' else 'Venta' }}</span> <b style="white-space:nowrap">{{ r.order.inst_id }}</b>
+        <div class="small muted">{{ r.type_label }}{% if r.liquidity %} · {{ r.liquidity }}{% endif %}</div></td>
+      <td class="l">{{ r.state_label }}{% if r.order.state == 'partially_filled' or (r.order.filled and r.order.filled < r.order.sz) %}<div class="small muted">{{ (r.filled_pct * 100) | money(0) }} % ejecutado</div>{% endif %}</td>
+      <td>{{ r.order.filled | qty }}{% if r.order.filled != r.order.sz %}<div class="small muted">de {{ r.order.sz | qty }}</div>{% endif %}</td>
+      <td>{% if r.order.px %}{{ r.order.px | price }}{% else %}<span class="muted">mercado</span>{% endif %}</td>
+      <td>{{ r.order.avg_px | price if r.order.avg_px else '—' }}</td>
+      <td>{{ r.value | money if r.value else '—' }}</td>
+      <td>{{ r.fee | money(4) if r.fee else '—' }}</td>
+      <td class="{{ r.pnl | tone }}">{{ r.pnl | signed if r.pnl is not none else '' }}</td>
+    </tr>
+  {% else %}
+    <tr><td colspan="9" class="muted">No hay órdenes con esos filtros.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% if view.total > limit %}<p class="small muted">Se muestran las {{ limit }} más recientes de {{ view.total }}. Usa los filtros para ver el resto.</p>{% endif %}
+<p class="small muted">OKX guarda las órdenes de los últimos 3 meses, y las canceladas sin ninguna ejecución solo unas horas: la bitácora conserva las que ya ha descargado. Las órdenes de los bots no aparecen aquí. «Resultado» es el de cada venta según FIFO, tras comisiones.</p>
+</div>
+{% endblock %}

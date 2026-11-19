@@ -131,6 +131,8 @@ lateral de Home Assistant. Usa una clave de API **de solo lectura**: no opera ni
 - **Posiciones**: cantidad, coste medio FIFO, invertido, valor y resultado neto de comisiones
   (las pagadas al comprar y la que pagarías al vender), con cada compra abierta (maker o
   taker, % pagado), las órdenes abiertas y los bots grid.
+- **Órdenes**: las abiertas, con su distancia al precio actual, importe y comisión estimada,
+  y el historial de ejecutadas y canceladas con filtros.
 - **Rendimiento**: cualquier periodo (7 d, 30 d, mes, año, todo o fechas libres) con resultado
   neto sin contar el dinero aportado, rentabilidad ponderada en el tiempo, caída máxima, curva
   del valor frente a lo aportado, resultado diario y tabla mensual.

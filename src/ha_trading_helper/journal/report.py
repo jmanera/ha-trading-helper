@@ -472,6 +472,181 @@ def assets(d: Data) -> list[AssetRow]:
     return sorted(visible, key=lambda r: r.total)
 
 
+# Orders --------------------------------------------------------------------------------
+
+ORDER_TYPES = {
+    "market": "Mercado",
+    "limit": "Límite",
+    "post_only": "Solo maker",
+    "fok": "FOK",
+    "ioc": "IOC",
+    "optimal_limit_ioc": "Mercado (IOC)",
+    "conditional": "Stop / TP",
+    "oco": "OCO",
+    "trigger": "Disparo",
+    "move_order_stop": "Stop dinámico",
+    "twap": "TWAP",
+    "iceberg": "Iceberg",
+}
+ORDER_STATES = {
+    "live": "Abierta",
+    "partially_filled": "Parcial",
+    "filled": "Ejecutada",
+    "canceled": "Cancelada",
+    "mmp_canceled": "Cancelada",
+}
+STATE_FILTERS = {
+    "ejecutadas": {"filled", "partially_filled"},
+    "canceladas": {"canceled", "mmp_canceled"},
+}
+MAKER_TYPES = {"limit", "post_only"}  # resting orders; the rest take liquidity
+HISTORY_LIMIT = 500
+
+
+@dataclass(frozen=True)
+class OpenOrderLine:
+    order: OpenOrder
+    ccy: str
+    remaining: float
+    px: float | None  # the price it executes at: limit, else trigger
+    value: float | None  # USDC of what is left to fill
+    market_px: float | None
+    distance: float | None  # from the market price to px, as a fraction
+    fee: float | None  # estimated, at maker for resting orders and taker otherwise
+    fee_rate: float
+    maker: bool
+    has_position: bool
+
+    @property
+    def type_label(self) -> str:
+        return ORDER_TYPES.get(self.order.ord_type, self.order.ord_type)
+
+    @property
+    def filled_pct(self) -> float:
+        return self.order.filled / self.order.sz if self.order.sz else 0.0
+
+
+@dataclass(frozen=True)
+class OrderLine:
+    order: Order
+    ccy: str
+    value: float  # USDC actually traded
+    fee: float  # USDC, from the fills
+    exec_types: set[str]
+    pnl: float | None
+
+    @property
+    def type_label(self) -> str:
+        return ORDER_TYPES.get(self.order.ord_type, self.order.ord_type)
+
+    @property
+    def state_label(self) -> str:
+        return ORDER_STATES.get(self.order.state, self.order.state)
+
+    @property
+    def filled_pct(self) -> float:
+        return self.order.filled / self.order.sz if self.order.sz else 0.0
+
+    @property
+    def liquidity(self) -> str:
+        if self.exec_types == {"M"}:
+            return "Maker"
+        if self.exec_types == {"T"}:
+            return "Taker"
+        return "Mixta" if self.exec_types else ""
+
+
+@dataclass(frozen=True)
+class OrdersView:
+    open: list[OpenOrderLine]
+    history: list[OrderLine]
+    total: int  # history rows matching the filters, before HISTORY_LIMIT
+    ccys: list[str]
+
+    @property
+    def buying(self) -> float:
+        return sum(o.value or 0.0 for o in self.open if o.order.side == "buy")
+
+    @property
+    def selling(self) -> float:
+        return sum(o.value or 0.0 for o in self.open if o.order.side == "sell")
+
+
+def orders_view(
+    d: Data,
+    *,
+    ccy: str = "",
+    state: str = "",
+    start: date | None = None,
+    end: date | None = None,
+) -> OrdersView:
+    held = {p.ccy for p in positions(d).rows}
+    open_ = [_open_line(d, o, held) for o in d.open_orders]
+    open_.sort(key=lambda o: (o.ccy, -o.order.c_time))
+    fills_by_order: dict[str, list[Fill]] = defaultdict(list)
+    for f in d.fills:
+        fills_by_order[f.ord_id].append(f)
+    pnl_by_order: dict[str, float] = defaultdict(float)
+    for x in d.book.disposals:
+        if x.ord_id:
+            pnl_by_order[x.ord_id] += x.pnl
+    lo = _ms(start) if start else None
+    hi = _ms(end + timedelta(days=1)) if end else None
+    states = STATE_FILTERS.get(state)
+    history: list[OrderLine] = []
+    for o in d.orders.values():
+        base = o.inst_id.split("-")[0]
+        if (
+            (ccy and base != ccy)
+            or (states and o.state not in states)
+            or (lo is not None and o.c_time < lo)
+            or (hi is not None and o.c_time >= hi)
+        ):
+            continue
+        fills_ = fills_by_order.get(o.ord_id, [])
+        history.append(
+            OrderLine(
+                order=o,
+                ccy=base,
+                value=sum(_fill_value(d, f) for f in fills_),
+                fee=sum(_fill_fee(d, f) for f in fills_),
+                exec_types={f.exec_type for f in fills_ if f.exec_type},
+                pnl=pnl_by_order.get(o.ord_id) if o.side == "sell" and fills_ else None,
+            )
+        )
+    history.sort(key=lambda r: -r.order.c_time)
+    ccys = sorted({o.inst_id.split("-")[0] for o in d.orders.values()} | {o.ccy for o in open_})
+    return OrdersView(open_, history[:HISTORY_LIMIT], len(history), ccys)
+
+
+def _open_line(d: Data, o: OpenOrder, held: set[str]) -> OpenOrderLine:
+    base, _, quote = o.inst_id.partition("-")
+    remaining = max(o.sz - o.filled, 0.0)
+    market = d.px(base)
+    quote_px = 1.0 if quote == REFERENCE else d.px(quote)
+    px = o.px or o.trigger_px
+    # market_px is in USDC; the order's price is in its quote currency
+    px_ref = px * quote_px if px is not None and quote_px is not None else None
+    at = px_ref if px_ref is not None else market  # market orders: at today's price
+    value = remaining * at if at is not None else None
+    maker_rate, taker_rate = d.rates(o.inst_id)
+    maker = o.kind == "order" and o.ord_type in MAKER_TYPES
+    rate = maker_rate if maker else taker_rate
+    return OpenOrderLine(
+        order=o,
+        ccy=base,
+        remaining=remaining,
+        px=px,
+        value=value,
+        market_px=market,
+        distance=px_ref / market - 1 if px_ref is not None and market else None,
+        fee=value * rate if value is not None else None,
+        fee_rate=rate,
+        maker=maker,
+        has_position=base in held,
+    )
+
+
 # Journal -------------------------------------------------------------------------------
 
 

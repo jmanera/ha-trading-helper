@@ -70,14 +70,31 @@ class FakeOkx:
                 "",
                 ts(D3, 9),
                 ts(D3, 9),
-            )
+            ),
+            Order(
+                "o4",
+                "SOL-USDC",
+                "buy",
+                "post_only",
+                "canceled",
+                45.0,
+                0.5,
+                None,
+                0.0,
+                0.0,
+                "",
+                "",
+                ts(D3, 8),
+                ts(D3, 8, 30),
+            ),
         ]
 
     async def open_orders(self) -> list[OpenOrder]:
         return [
             OpenOrder(
                 "a1", "algo", "SOL-USDC", "sell", "conditional", None, 0.4982, 0.0, 55.0, ts(D3, 12)
-            )
+            ),
+            OpenOrder("l1", "order", "SOL-USDC", "buy", "limit", 63.0, 1.0, 0.25, None, ts(D3, 13)),
         ]
 
     async def bots(self) -> list[Bot]:
@@ -185,6 +202,35 @@ async def test_report_views(store: Store) -> None:
     assert ov.realized_all == pytest.approx(PROFIT)
 
 
+async def test_orders_view(store: Store) -> None:
+    await synced(store)
+    store.set_json("live_prices", LIVE)
+    d = report.Data.load(store, NOW)
+    view = report.orders_view(d)
+    stop, limit = sorted(view.open, key=lambda o: o.order.c_time)
+    assert stop.type_label == "Stop / TP" and not stop.maker
+    assert stop.px == 55.0 and stop.distance == pytest.approx(55 / 70 - 1)
+    assert stop.value == pytest.approx(0.4982 * 55) and stop.fee == pytest.approx(
+        stop.value * 0.001
+    )
+    assert stop.has_position
+    assert limit.maker and limit.remaining == pytest.approx(0.75)
+    assert limit.value == pytest.approx(0.75 * 63) and limit.fee == pytest.approx(
+        limit.value * 0.0008
+    )
+    assert limit.filled_pct == pytest.approx(0.25)
+    assert view.buying == pytest.approx(0.75 * 63) and view.selling == pytest.approx(0.4982 * 55)
+    sale, canceled = view.history
+    assert sale.state_label == "Ejecutada" and sale.liquidity == "Taker"
+    assert sale.value == pytest.approx(90.0) and sale.fee == pytest.approx(0.09)
+    assert sale.pnl == pytest.approx(PROFIT)
+    assert canceled.state_label == "Cancelada" and canceled.value == 0 and canceled.pnl is None
+    assert [r.order.ord_id for r in report.orders_view(d, state="canceladas").history] == ["o4"]
+    assert report.orders_view(d, ccy="DOOD").history == []
+    assert report.orders_view(d, start=D1, end=D2).history == []
+    assert view.ccys == ["SOL"] and view.total == 2
+
+
 async def test_pages_render_under_ingress(store: Store) -> None:
     await synced(store)
     calls: list[int] = []
@@ -203,6 +249,8 @@ async def test_pages_render_under_ingress(store: Store) -> None:
         "/activos",
         "/bitacora?activo=sol&tipo=trade&restos=true",
         "/bitacora?desde=nope",
+        "/ordenes",
+        "/ordenes?activo=sol&estado=canceladas&desde=2026-11-01&hasta=2026-11-03",
     ):
         page = web.get(path)
         assert page.status_code == 200, path
@@ -224,7 +272,7 @@ async def test_pages_render_under_ingress(store: Store) -> None:
 
 def test_empty_database_still_renders(store: Store) -> None:
     web = TestClient(create_app(store, clock=lambda: NOW))
-    for path in ("/", "/posiciones", "/rendimiento", "/activos", "/bitacora"):
+    for path in ("/", "/posiciones", "/ordenes", "/rendimiento", "/activos", "/bitacora"):
         assert web.get(path).status_code == 200
 
 

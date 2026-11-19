@@ -158,6 +158,31 @@ def create_app(
         d = load()
         return render(request, "positions.html", "posiciones", pos=report.positions(d))
 
+    @app.get("/ordenes", response_class=HTMLResponse)
+    def orders(
+        request: Request,
+        activo: str = "",
+        estado: str = "",
+        desde: Annotated[str | None, Query()] = None,
+        hasta: Annotated[str | None, Query()] = None,
+    ) -> HTMLResponse:
+        view = report.orders_view(
+            load(), ccy=activo.upper(), state=estado, start=_date(desde), end=_date(hasta)
+        )
+        return render(
+            request,
+            "orders.html",
+            "ordenes",
+            view=view,
+            limit=report.HISTORY_LIMIT,
+            f={
+                "activo": activo.upper(),
+                "estado": estado,
+                "desde": desde or "",
+                "hasta": hasta or "",
+            },
+        )
+
     @app.get("/rendimiento", response_class=HTMLResponse)
     def performance(
         request: Request,
