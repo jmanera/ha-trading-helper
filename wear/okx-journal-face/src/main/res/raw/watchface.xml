@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   Bitácora OKX watch face (Watch Face Format v2), 450 x 450, scaled to the screen.
+  Time on top, date at the bottom, and between them:
 
   Three Home Assistant "entity state" complications (short text, unit switched off). Each slot
   also lists EMPTY: Wear OS rejects the face (and the picker hangs) unless the fallback
@@ -11,13 +12,32 @@
 
   Home Assistant formats the state with the watch's language ("-28,28"), so the colour of
   today's result is read from the text: red when it starts with a minus sign, white when it
-  is zero, green otherwise.
+  is zero, green with a "+" when it starts with a digit, and as is in white otherwise (the
+  "+" Home Assistant shows until a sensor is chosen, an error).
 -->
 <WatchFace width="450" height="450">
   <Metadata key="CLOCK_TYPE" value="DIGITAL" />
   <Metadata key="PREVIEW_TIME" value="10:08:32" />
 
   <Scene backgroundColor="#ff000000">
+
+    <!-- Time on top, small, so the account value stays the largest figure. It stays visible in
+         ambient mode; 12 or 24 h as set on the watch. -->
+    <DigitalClock x="125" y="42" width="200" height="56">
+      <TimeText x="0" y="0" width="200" height="56" format="hh:mm" hourFormat="SYNC_TO_DEVICE" align="CENTER">
+        <Font family="SYNC_TO_DEVICE" size="46" color="#ffe6e9ef" />
+      </TimeText>
+    </DigitalClock>
+
+    <!-- Date at the bottom, in the watch's language ("jue 19 nov") -->
+    <PartText x="105" y="372" width="240" height="32">
+      <Variant mode="AMBIENT" target="alpha" value="120" />
+      <Text align="CENTER">
+        <Font family="SYNC_TO_DEVICE" size="24" color="#ff888780">
+          <Template>%s %s %s<Parameter expression="[DAY_OF_WEEK_S]" /><Parameter expression="[DAY]" /><Parameter expression="[MONTH_S]" /></Template>
+        </Font>
+      </Text>
+    </PartText>
 
     <!-- Labels -->
     <PartText x="125" y="112" width="200" height="34">
@@ -105,6 +125,13 @@
             <Expression name="negative"><![CDATA[
               subText([COMPLICATION.TEXT], 0, 1) == "-" || subText([COMPLICATION.TEXT], 0, 1) == "−"
             ]]></Expression>
+            <Expression name="positive"><![CDATA[
+              subText([COMPLICATION.TEXT], 0, 1) == "0" || subText([COMPLICATION.TEXT], 0, 1) == "1" ||
+              subText([COMPLICATION.TEXT], 0, 1) == "2" || subText([COMPLICATION.TEXT], 0, 1) == "3" ||
+              subText([COMPLICATION.TEXT], 0, 1) == "4" || subText([COMPLICATION.TEXT], 0, 1) == "5" ||
+              subText([COMPLICATION.TEXT], 0, 1) == "6" || subText([COMPLICATION.TEXT], 0, 1) == "7" ||
+              subText([COMPLICATION.TEXT], 0, 1) == "8" || subText([COMPLICATION.TEXT], 0, 1) == "9"
+            ]]></Expression>
           </Expressions>
           <Compare expression="zero">
             <PartText x="0" y="0" width="160" height="60">
@@ -126,12 +153,23 @@
               </Text>
             </PartText>
           </Compare>
-          <Default>
+          <Compare expression="positive">
             <PartText x="0" y="0" width="160" height="60">
               <Variant mode="AMBIENT" target="alpha" value="170" />
               <Text align="CENTER" ellipsis="TRUE">
                 <Font family="SYNC_TO_DEVICE" size="40" weight="MEDIUM" color="#ff3ccf91">
                   <Template>+%s<Parameter expression="[COMPLICATION.TEXT]" /></Template>
+                </Font>
+              </Text>
+            </PartText>
+          </Compare>
+          <!-- Not a number (not configured yet, an error from Home Assistant): as is, in white -->
+          <Default>
+            <PartText x="0" y="0" width="160" height="60">
+              <Variant mode="AMBIENT" target="alpha" value="170" />
+              <Text align="CENTER" ellipsis="TRUE">
+                <Font family="SYNC_TO_DEVICE" size="40" weight="MEDIUM" color="#ffffffff">
+                  <Template>%s<Parameter expression="[COMPLICATION.TEXT]" /></Template>
                 </Font>
               </Text>
             </PartText>

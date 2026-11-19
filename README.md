@@ -61,8 +61,9 @@ por activo y notas propias en cada operación. Guarda el histórico en MariaDB.
 
 ### ⌚ Y en la muñeca
 
-La esfera **Bitácora OKX** para Wear OS (pensada para el Galaxy Watch 5) muestra el valor de la
-cuenta, el resultado de hoy en verde, rojo o blanco, y las posiciones abiertas. Toma los datos
+La esfera **Bitácora OKX** para Wear OS (probada en un Galaxy Watch 5) muestra el valor de la
+cuenta, el resultado de hoy en verde, rojo o blanco, y las posiciones abiertas, con la hora
+arriba y la fecha abajo. Toma los datos
 de Home Assistant y no necesita ninguna app propia en el móvil. [Cómo instalarla](wear/README.md).
 
 <p align="center"><img src="docs/img/watch-face.png" alt="La esfera Bitácora OKX en un día positivo, uno negativo y uno sin cambios" width="820"></p>

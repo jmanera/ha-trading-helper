@@ -152,8 +152,8 @@ make journal                              # panel en http://localhost:8099
 
 ## Esfera para el reloj
 
-La esfera **Bitácora OKX** para Wear OS muestra en el reloj el valor de la cuenta, el resultado
-de hoy (verde, rojo o blanco) y las posiciones abiertas, con los sensores de la Bitácora a
+La esfera **Bitácora OKX** para Wear OS muestra en el reloj la hora, la fecha, el valor de la
+cuenta, el resultado de hoy (verde, rojo o blanco) y las posiciones abiertas, con los sensores de la Bitácora a
 través de la app de Home Assistant para el reloj. Se actualiza cada 15 minutos.
 
 ```bash

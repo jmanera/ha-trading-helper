@@ -16,13 +16,17 @@ Está hecha con [Watch Face Format](https://developer.android.com/training/weara
 **complicaciones** de la app de Home Assistant, a partir de los sensores que publica la app
 [Bitácora OKX](../okx_journal/DOCS.md):
 
+Arriba va la hora (12 o 24 h, según el reloj) y abajo la fecha en el idioma del reloj
+(«jue 19 nov»). Entre ellas, tres huecos:
+
 | Hueco | Sensor | Cómo se ve |
 |---|---|---|
-| Arriba, grande | `sensor.okx_journal_valor` | blanco |
-| Abajo, izquierda | `sensor.okx_journal_resultado_hoy` | verde si sube, rojo si baja, blanco si es 0 |
+| Centro, grande | `sensor.okx_journal_valor` | blanco |
+| Abajo, izquierda | `sensor.okx_journal_resultado_hoy` | verde si sube, rojo si baja, blanco si es 0 o no es un número |
 | Abajo, derecha | `sensor.okx_journal_posiciones` | blanco |
 
-En el modo de pantalla siempre encendida los números se atenúan y la línea desaparece.
+En el modo de pantalla siempre encendida la hora se mantiene, los números y la fecha se
+atenúan y la línea desaparece.
 
 ### 1. Compilar
 
@@ -63,8 +67,11 @@ cada uno:
 2. Elige **Home Assistant → Estado de entidad** y el sensor de la tabla de arriba.
 3. Deja **sin unidad** cada complicación: la esfera ya pone «USDC», «hoy» y «posiciones».
 
-Mientras un hueco no tenga sensor elegido, Home Assistant muestra «Estado de la entidad». Si
-muestra `--`, no tiene ninguna complicación asignada.
+Mientras un hueco no tenga sensor elegido, Home Assistant muestra «Estado de la entidad» o un
+«+». Si muestra `--`, no tiene ninguna complicación asignada.
+
+**Al actualizar la esfera** (instalar una versión nueva) el Galaxy Watch reinicia los huecos y
+hay que volver a elegir los tres sensores.
 
 Probada en un Galaxy Watch 5 (SM-R860) con Wear OS 6.
 
