@@ -13,7 +13,7 @@ from ha_trading_helper.journal import payloads, report
 from ha_trading_helper.journal.config import JournalSettings
 from ha_trading_helper.journal.models import Balance, Bill, Bot, Fill, OpenOrder, Order
 from ha_trading_helper.journal.store import Store, bills, fills
-from ha_trading_helper.journal.sync import Syncer, value_now
+from ha_trading_helper.journal.sync import ORDERS_REREAD, Syncer, value_now
 from ha_trading_helper.journal.web import create_app, duration, money, pct, qty, signed, tone
 from ha_trading_helper.okx.client import OkxError
 from tests.unit.journal_data import (
@@ -94,7 +94,9 @@ class FakeOkx:
             OpenOrder(
                 "a1", "algo", "SOL-USDC", "sell", "conditional", None, 0.4982, 0.0, 55.0, ts(D3, 12)
             ),
-            OpenOrder("l1", "order", "SOL-USDC", "buy", "limit", 63.0, 1.0, 0.25, None, ts(D3, 13)),
+            OpenOrder(
+                "4001", "order", "SOL-USDC", "buy", "limit", 63.0, 1.0, 0.25, None, ts(D3, 13)
+            ),
         ]
 
     async def bots(self) -> list[Bot]:
@@ -140,6 +142,28 @@ async def test_sync_fills_the_store_and_resumes(store: Store) -> None:
     assert fake.since["fills"] == "2003"
     assert fake.since["bills"] == store.last_id(bills, "bill_id")
     assert len(store.fills()) == 3
+
+
+def test_sync_resumes_orders_below_those_left_resting(store: Store) -> None:
+    syncer = Syncer(store, FakeOkx())  # type: ignore[arg-type]
+    assert syncer._orders_since() is None
+    store.save_orders(
+        Order(i, "SOL-USDC", "buy", "limit", "filled", 60.0, 1.0, 60.0, 1.0, 0.0, "", "", 0, 0)
+        for i in ("900", "1200")
+    )
+    # Saved by an older version, which may have skipped some: read it all once more.
+    assert syncer._orders_since() is None
+    store.set_meta(ORDERS_REREAD, "1")
+    assert syncer._orders_since() == "1200"
+    # A limit placed before the last stored order and still on the book at the last sync:
+    # when it fills it keeps its lower ordId, so the history must be read from below it
+    # (paging stops at ``since`` and leaves it out).
+    # Algo ids are a different sequence and do not count.
+    store.replace_open_orders(
+        OpenOrder(i, kind, "SOL-USDC", "buy", "limit", 60.0, 1.0, 0.0, None, 0)
+        for i, kind in (("1100", "order"), ("950", "order"), ("5", "algo"))
+    )
+    assert syncer._orders_since() == "949"
 
 
 async def test_sync_reports_failed_steps(store: Store) -> None:

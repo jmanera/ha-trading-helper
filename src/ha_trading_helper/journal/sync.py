@@ -17,6 +17,9 @@ from ha_trading_helper.okx.client import OkxError
 log = structlog.get_logger(__name__)
 
 FEES_EVERY = timedelta(hours=12)
+# Set once the order history has been read in full with resting orders in mind; older
+# versions skipped those, so a database without it reads the whole history once more.
+ORDERS_REREAD = "orders_reread"
 
 
 @dataclass
@@ -106,9 +109,25 @@ class Syncer:
         result.new_bills = len(new)
 
     async def _orders(self, result: SyncResult, now: datetime) -> None:
-        new = await self.client.orders(since=self.store.last_id(orders, "ord_id"))
+        new = await self.client.orders(since=self._orders_since())
         self.store.save_orders(new)
+        self.store.set_meta(ORDERS_REREAD, "1")
         result.new_orders = len(new)
+
+    def _orders_since(self) -> str | None:
+        """Where to resume the order history.
+
+        OKX sorts it by ``ordId``, given when the order is placed, so an order that rested on
+        the book since the last sync sits below the last stored id. Resume just below every
+        order that was open then (this step runs before they are replaced): paging stops at
+        ``since`` itself. Upserts absorb the orders read again.
+        """
+        last = self.store.last_id(orders, "ord_id")
+        if last is None or not self.store.get_meta(ORDERS_REREAD):
+            return None  # first sync, or one before resting orders were caught: read it all
+        resting = [str(int(o.id) - 1) for o in self.store.open_orders() if o.kind == "order"]
+        # Same order as Store.last_id: numeric strings, by length and then value.
+        return min([last, *resting], key=lambda i: (len(i), i))
 
     async def _open_orders(self, result: SyncResult, now: datetime) -> None:
         current = await self.client.open_orders()
