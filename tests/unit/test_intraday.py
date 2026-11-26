@@ -158,13 +158,20 @@ def test_stats_and_verdict() -> None:
     assert stats([]).win_rate == 0.0 and stats([closed(1.0)]).ci_pct == (1.0, 1.0)
 
     early = verdict(s, c, T0, T0 + timedelta(days=10))
-    assert early[0] == "midiendo" and "faltan 18 días" in early[1]
+    assert early[0] == "midiendo" and "faltan 18 días como mínimo" in early[1]
+    both = verdict(stats(good[:23]), c, T0, T0 + timedelta(days=13.9))
+    assert "23 de 100 operaciones, faltan 77 operaciones y 15 días como mínimo" in both[1]
+    one = verdict(stats(good[:99]), c, T0, T0 + timedelta(days=27.5))
+    assert "faltan 1 operación y 1 día como mínimo" in one[1]
+    no_control = verdict(s, stats(rand[:1]), T0, T0 + timedelta(days=30))
+    assert no_control[0] == "midiendo" and "falta que el control" in no_control[1]
     passed = verdict(s, c, T0, T0 + timedelta(days=30))
     assert passed[0] == "cumple" and "supera al azar" in passed[1]
     failed = verdict(c, s, T0, T0 + timedelta(days=30))
     assert failed[0] == "no_cumple" and "Sin ventaja" in failed[1]
     few = Stats(closed=50, open=0, wins=25, mean_pct=1, mean_r=1, ci_pct=(0, 2), total_pct=50)
-    assert verdict(few, c, T0, T0 + timedelta(days=60))[0] == "midiendo"
+    late = verdict(few, c, T0, T0 + timedelta(days=60))
+    assert late[0] == "midiendo" and "faltan 50 operaciones como mínimo" in late[1]
 
 
 # alerts -----------------------------------------------------------------------------
