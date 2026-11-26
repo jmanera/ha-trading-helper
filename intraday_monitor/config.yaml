@@ -1,5 +1,5 @@
 name: Monitor intradía
-version: "0.1.0"
+version: "0.1.1"
 slug: intraday_monitor
 description: Alertas de OKX en velas de 5 y 15 min y medición en papel de reglas intradía fijas. No opera.
 url: https://github.com/jmanera/ha-trading-helper

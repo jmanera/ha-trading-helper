@@ -131,10 +131,24 @@ def verdict(rule: Stats, control: Stats, started: datetime, now: datetime) -> tu
     """
     days = (now - started) / timedelta(days=1)
     if days < MIN_DAYS or rule.closed < MIN_TRADES or control.closed < 2:
-        left = max(0, math.ceil(MIN_DAYS - days))
+        trades_left = max(0, MIN_TRADES - rule.closed)
+        days_left = max(0, math.ceil(MIN_DAYS - days))
+        missing = [
+            f"{n} {one if n == 1 else many}"
+            for n, one, many in (
+                (trades_left, "operación", "operaciones"),
+                (days_left, "día", "días"),
+            )
+            if n > 0
+        ]
+        left = (
+            f"faltan {' y '.join(missing)} como mínimo"
+            if missing
+            else "falta que el control cierre operaciones"
+        )
         return "midiendo", (
-            f"Midiendo: {rule.closed} de {MIN_TRADES} operaciones, faltan {left} días como "
-            "mínimo. No saques conclusiones todavía."
+            f"Midiendo: {rule.closed} de {MIN_TRADES} operaciones, {left}. "
+            "No saques conclusiones todavía."
         )
     diff = rule.mean_pct - control.mean_pct
     half = 1.96 * math.sqrt(rule.sd_pct**2 / rule.closed + control.sd_pct**2 / control.closed)

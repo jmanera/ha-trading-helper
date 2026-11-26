@@ -23,6 +23,6 @@ ENV PATH=/opt/venv/bin:$PATH \
     HTH_DATA_DIR=/data \
     MPLCONFIGDIR=/tmp/matplotlib \
     PYTHONUNBUFFERED=1
-LABEL io.hass.type="addon" io.hass.version="0.1.0"
+LABEL io.hass.type="addon" io.hass.version="0.1.1"
 WORKDIR /data
 CMD ["ha-trading-helper", "intraday", "serve"]
