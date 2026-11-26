@@ -1,4 +1,4 @@
-.PHONY: help install check lint typecheck test test-all security run scan validate journal up down app-bundle clean
+.PHONY: help install check lint typecheck test test-all security run scan validate journal up down app-bundle wear wear-install clean
 
 UV ?= uv
 
@@ -58,5 +58,13 @@ app-bundle:  ## Self-contained app folders for /addons (/local_apps) on Home Ass
 	done
 	@echo "Copy dist/ha_trading_helper, dist/intraday_monitor and dist/okx_journal to /addons/ on Home Assistant"
 
+WEAR_APK = wear/okx-journal-face/build/outputs/apk/release/okx-journal-face-release.apk
+
+wear:  ## Build the Wear OS apps in wear/ (needs JDK 17+ and the Android SDK)
+	cd wear && ./gradlew assembleRelease
+
+wear-install: wear  ## Install the Bitácora OKX watch face on a watch paired with adb (see wear/README.md)
+	adb install -r $(WEAR_APK)
+
 clean:
-	rm -rf dist .pytest_cache .mypy_cache .ruff_cache .coverage coverage.xml htmlcov
+	rm -rf dist wear/*/build .pytest_cache .mypy_cache .ruff_cache .coverage coverage.xml htmlcov
