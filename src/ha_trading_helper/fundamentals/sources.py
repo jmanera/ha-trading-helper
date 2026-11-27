@@ -49,8 +49,10 @@ class JsonApi:
         max_retries: int = 3,
         backoff: float = 2.0,
         sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
+        on_call: Callable[[], None] | None = None,
     ) -> None:
         self._http = http or httpx.AsyncClient(base_url=base_url, timeout=30.0)
+        self._on_call = on_call  # counts every request sent, to watch monthly quotas
         self._owns_http = http is None
         self._headers = headers or {}
         self._limiter = limiter
@@ -78,6 +80,8 @@ class JsonApi:
         for attempt in range(self._max_retries + 1):
             if self._limiter:
                 await self._limiter.acquire()
+            if self._on_call:
+                self._on_call()
             try:
                 response = await self._http.get(path, params=params, headers=self._headers)
             except httpx.TransportError as exc:

@@ -43,6 +43,18 @@ class Cache:
             )
             self._db.commit()
 
+    def bump(self, key: str) -> int:
+        """Add one to a counter and return it."""
+        with self._lock:
+            row = self._db.execute("SELECT value FROM cache WHERE key = ?", (key,)).fetchone()
+            count = (json.loads(row[0]) if row else 0) + 1
+            self._db.execute(
+                "INSERT OR REPLACE INTO cache (key, ts, value) VALUES (?, ?, ?)",
+                (key, self._clock(), json.dumps(count)),
+            )
+            self._db.commit()
+        return count
+
     async def fetch(self, key: str, ttl: float, load: Callable[[], Awaitable[Any]]) -> Any:
         value = self.get(key, ttl)
         if value is None:

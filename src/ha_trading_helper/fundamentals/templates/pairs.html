@@ -1,7 +1,26 @@
 {% extends "base.html" %}
+{% block head %}{% if bulk and bulk.running %}<meta http-equiv="refresh" content="15">{% endif %}{% endblock %}
 {% block content %}
 <h1>Pares cripto/USDC en OKX</h1>
 <p class="lead">Cómo se han movido en las últimas 4 horas. Pulsa en un par para ver su análisis fundamental: tokenomics, adopción, finanzas, desarrollo y riesgos.</p>
+
+<div class="panel" style="margin:0 0 14px">
+{% if bulk and bulk.running %}
+  <b>Analizando todas las monedas…</b> {{ bulk.done }} de {{ bulk.total }}{% if bulk.current %} · ahora {{ bulk.current }}{% endif %}{% if bulk.cancelled %} · deteniendo{% endif %}
+  <div class="meter" style="margin:8px 0"><b style="width:{{ (100 * bulk.done / bulk.total) if bulk.total else 0 }}%"></b></div>
+  <div class="small muted">Empezó {{ bulk.started | when('%H:%M') }} · {{ bulk.reused }} ya estaban analizadas · {{ bulk.incomplete }} con alguna fuente fallida · la página se recarga sola cada 15 s. Puedes cerrarla: sigue en segundo plano.</div>
+  <form method="post" action="{{ base }}/analizar-todo/detener" style="margin-top:8px"><button class="ghost" type="submit">Detener</button></form>
+{% else %}
+  <form method="post" action="{{ base }}/analizar-todo" class="inline">
+    <button type="submit" {{ 'disabled' if not pending }}>Analizar todas</button>
+    <span class="small muted">{% if pending %}{{ pending }} pares sin análisis reciente · unas {{ estimate.calls }} consultas a CoinGecko, ≈ {{ estimate.minutes | num(0) }} min{% else %}Todas tienen un análisis reciente{% endif %} · este mes van {{ estimate.used | num(0) }} de {{ estimate.monthly | num(0) }} consultas del plan gratuito</span>
+  </form>
+  {% if bulk and bulk.finished %}<div class="small muted" style="margin-top:6px">Última pasada: {{ bulk.done }} de {{ bulk.total }}{% if bulk.cancelled %} (detenida){% endif %}, terminó {{ bulk.finished | when('%d/%m %H:%M') }}, {{ bulk.incomplete }} con alguna fuente fallida.</div>{% endif %}
+  {% if not estimate.key %}<div class="warn small" style="margin:8px 0 0">Sin clave de CoinGecko la pasada puede tardar horas y muchas monedas quedarán incompletas. Añádela en las opciones de la app.</div>{% endif %}
+  {% if pending and estimate.used + estimate.calls > estimate.monthly %}<div class="warn small" style="margin:8px 0 0">Esta pasada superaría las {{ estimate.monthly | num(0) }} consultas mensuales del plan Demo: las últimas monedas pueden fallar hasta el mes que viene.</div>{% endif %}
+  {% if not estimate.github %}<div class="small muted" style="margin-top:6px">Sin token de GitHub solo caben 60 consultas por hora: la mayoría quedará sin puntuación de desarrollo.</div>{% endif %}
+{% endif %}
+</div>
 
 <form class="inline" method="get" action="{{ base }}/">
   <label>Buscar<input type="search" name="q" value="{{ q }}" placeholder="BTC, SOL…"></label>
@@ -18,7 +37,7 @@
 <div class="panel scroll" style="margin-top:12px">
 <table>
   <thead><tr>
-    {{ th('par', 'Par') }}<th>Precio</th>{{ th('cambio', 'Cambio 4 h') }}{{ th('volumen', 'Volumen 4 h') }}{{ th('volumen24', 'Volumen 24 h', 'wide') }}<th>Fundamentales</th><th class="wide"></th>
+    {{ th('par', 'Par') }}<th>Precio</th>{{ th('cambio', 'Cambio 4 h') }}{{ th('cambio24', 'Cambio 24 h') }}{{ th('volumen', 'Volumen 4 h') }}{{ th('volumen24', 'Volumen 24 h', 'wide') }}{{ th('puntos', 'Fundamentales', 'l') }}<th class="wide"></th>
   </tr></thead>
   <tbody>
   {% for p in rows %}
@@ -27,17 +46,18 @@
       <td><a href="{{ base }}/moneda/{{ p.base }}" style="text-decoration:none"><b>{{ p.base }}</b></a><span class="muted">/USDC</span></td>
       <td>{{ p.last | price }}</td>
       <td class="{{ p.change_4h | tone }}">{{ p.change_4h | pct(2, sign=True) }}</td>
+      <td class="{{ p.change_24h | tone }}">{{ p.change_24h | pct(2, sign=True) }}</td>
       <td>{{ p.volume_4h | big }}</td>
       <td class="muted wide">{{ p.volume_24h | big }}</td>
-      <td>{% if a %}{% set s = a.scores %}<span class="chip {{ s.overall | score_tone }}">{{ s.overall | num(0) if s.overall is not none else '—' }}/100</span> <span class="chip {{ s.outlook | outlook_tone }}">{{ s.outlook }}</span>{% else %}<span class="muted small">sin analizar</span>{% endif %}</td>
+      <td class="l">{% if a %}{% set s = a.scores %}<span class="chip {{ s.overall | score_tone }}">{{ s.overall | num(0) if s.overall is not none else '—' }}/100</span> <span class="chip {{ s.outlook | outlook_tone }}">{{ s.outlook }}</span>{% else %}<span class="muted small">sin analizar</span>{% endif %}</td>
       <td class="wide"><a href="{{ base }}/moneda/{{ p.base }}">Análisis →</a></td>
     </tr>
   {% else %}
-    <tr><td colspan="7" class="muted">{% if total %}Ningún par coincide con «{{ q }}».{% else %}Leyendo los pares de OKX: tarda unos 20 segundos al arrancar. Recarga la página en un momento.{% endif %}</td></tr>
+    <tr><td colspan="8" class="muted">{% if total %}Ningún par coincide con «{{ q }}».{% else %}Leyendo los pares de OKX: tarda unos 20 segundos al arrancar. Recarga la página en un momento.{% endif %}</td></tr>
   {% endfor %}
   </tbody>
 </table>
-<p class="small muted">{{ rows | length }} de {{ total }} pares. Volúmenes en USDC, solo en OKX. Cambio y volumen de las últimas 48 velas de 5 minutos. Sin monedas estables ni acciones tokenizadas. La puntuación aparece cuando el par ya se ha analizado.</p>
+<p class="small muted">{{ rows | length }} de {{ total }} pares. Volúmenes en USDC, solo en OKX. Cambio y volumen de 4 h: las últimas 48 velas de 5 minutos; cambio de 24 h: frente al precio de hace 24 h en OKX. Sin monedas estables ni acciones tokenizadas. La puntuación aparece cuando el par ya se ha analizado.</p>
 </div>
 <form method="post" action="{{ base }}/actualizar" style="margin-top:10px" class="inline">
   <span class="small muted">{% if updated %}Actualizado {{ updated | when }}{% else %}Aún sin datos{% endif %}</span>

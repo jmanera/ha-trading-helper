@@ -38,6 +38,7 @@ class Ticker(BaseModel):
     bid: float | None
     ask: float | None
     volume_24h_quote: float
+    open_24h: float | None = None  # price 24 h ago (rolling window)
 
     @property
     def quote(self) -> str:
@@ -62,6 +63,7 @@ class Ticker(BaseModel):
             ask=num("askPx"),
             # For SPOT, volCcy24h is the 24h volume in the quote currency.
             volume_24h_quote=num("volCcy24h") or 0.0,
+            open_24h=num("open24h"),
         )
 
 

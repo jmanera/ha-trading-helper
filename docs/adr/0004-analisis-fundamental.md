@@ -41,6 +41,10 @@ Probamos las APIs el 27/11/2026:
 8. **Símbolo → moneda**: la de mayor capitalización con ese símbolo entre las 1.250 primeras;
    la opción `coin_ids` corrige los casos ambiguos. Para DefiLlama, primero la cadena de la que
    la moneda es el token y después el protocolo.
+9. **Análisis de todas en segundo plano** (0.2.0), en serie y por volumen de 24 h, reutilizando
+   los análisis recientes. El límite real es la cuota mensual del plan Demo de CoinGecko
+   (10.000 consultas, 2 por moneda): la app cuenta las consultas del mes y avisa antes de
+   superarla.
 
 ## Consecuencias
 

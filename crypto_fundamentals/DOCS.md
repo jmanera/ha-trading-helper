@@ -20,9 +20,13 @@ completos:
 
 ## Pantallas
 
-- **Pares USDC**: precio, cambio y volumen de 4 h (las últimas 48 velas de 5 minutos) y
-  volumen de 24 h, ordenables y con buscador. Sin monedas estables ni acciones tokenizadas.
-  Las monedas ya analizadas muestran su puntuación y su perspectiva.
+- **Pares USDC**: precio, cambio de 4 h (las últimas 48 velas de 5 minutos) y de 24 h, y
+  volumen de 4 h y de 24 h, con buscador. Ordenada por defecto por el cambio de 4 h; también
+  por cambio de 24 h, volúmenes o puntuación fundamental. Sin monedas estables ni acciones
+  tokenizadas. Las monedas ya analizadas muestran su puntuación y su perspectiva.
+- **Analizar todas**: analiza en segundo plano, una tras otra y de la más negociada a la
+  menos, las monedas sin un análisis reciente. Muestra el progreso, se puede detener y sigue
+  aunque cierres la página.
 - **Ficha de cada moneda**: puntuación fundamental (0-100), perspectiva (alcista, neutral o
   bajista), riesgo de dilución y riesgo de liquidez, las cuatro puntuaciones parciales y el
   detalle de cada métrica con su valor, sus puntos y por qué importa. Debajo, la descripción
@@ -67,6 +71,25 @@ público), la métrica cuenta como 0. Si una fuente falla, queda «sin datos» y
 
 Los umbrales son criterios razonables, **no ajustados a precios pasados**: la puntuación sirve
 para comparar proyectos, no predice la rentabilidad.
+
+## Límites de las claves al analizar todas
+
+Cada moneda nueva gasta **2 consultas de CoinGecko** (ficha y serie de un año) y 1 de GitHub
+por proyecto (guardada 24 h). DefiLlama y OKX no tienen claves ni cuotas que importen aquí.
+
+| Clave | Límite | Una pasada completa (unos 270 pares) |
+|---|---|---|
+| CoinGecko Demo | 30 consultas/min y **10.000 al mes** | unas 540 consultas, ~22 min |
+| Sin clave de CoinGecko | unas 5/min y variable | horas, con muchas fallidas |
+| GitHub con token | 5.000/hora | sin problema |
+| GitHub sin token | 60/hora por IP | la mayoría sin desarrollo |
+
+La cuota mensual de CoinGecko es la que manda: caben unas **18 pasadas completas al mes**,
+así que conviene no lanzar más de una cada dos días. La pasada se salta las monedas con un
+análisis de menos de `cache_hours` (12 h): repetirla enseguida no gasta nada. El panel muestra
+cuántas consultas lleva el mes (contadas por la app, reintentos incluidos) y avisa si la pasada
+superaría las 10.000. Al llegar al límite, CoinGecko responde con error hasta el mes siguiente
+y las monedas quedan «sin datos» en sus métricas de mercado.
 
 ## Opciones
 

@@ -26,6 +26,7 @@ class Pair:
     change_4h: float | None  # fraction
     volume_4h: float | None  # USDC
     volume_24h: float  # USDC
+    change_24h: float | None = None  # fraction
     listed: int | None = None  # ms, first listing of the coin on OKX in any quote
 
     @property
@@ -42,7 +43,7 @@ def window(candles: list[Candle]) -> tuple[float | None, float | None]:
 
 
 async def load_pairs(okx: OkxClient) -> list[Pair]:
-    """Live crypto pairs quoted in USDC (no stablecoins nor tokenised stocks), by 4h volume."""
+    """Live crypto pairs quoted in USDC (no stablecoins nor tokenised stocks), by 4h change."""
     instruments, tickers = await asyncio.gather(okx.instruments(), okx.tickers())
     live = {
         i.inst_id
@@ -73,8 +74,11 @@ async def load_pairs(okx: OkxClient) -> list[Pair]:
             change,
             volume,
             t.volume_24h_quote,
+            t.last / t.open_24h - 1 if t.open_24h and t.last else None,
             listed.get(t.inst_id.split("-", 1)[0]),
         )
         for t, (change, volume) in zip(picked, windows, strict=True)
     ]
-    return sorted(pairs, key=lambda p: p.volume_4h or 0.0, reverse=True)
+    return sorted(
+        pairs, key=lambda p: p.change_4h if p.change_4h is not None else -9.0, reverse=True
+    )

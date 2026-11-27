@@ -25,7 +25,7 @@ from ha_trading_helper.fundamentals.cache import Cache
 from ha_trading_helper.fundamentals.config import FundamentalsSettings
 from ha_trading_helper.fundamentals.market import Pair, load_pairs, window
 from ha_trading_helper.fundamentals.scoring import Inputs, ramp, score
-from ha_trading_helper.fundamentals.service import FundamentalsService
+from ha_trading_helper.fundamentals.service import BulkRun, FundamentalsService
 from ha_trading_helper.fundamentals.sources import (
     COINGECKO_URL,
     DEFILLAMA_URL,
@@ -382,7 +382,14 @@ class FakeOkx(Closeable):
 
     async def tickers(self) -> list[Ticker]:
         return [
-            Ticker(inst_id=i, last=1.0, bid=0.99, ask=1.01, volume_24h_quote=v)
+            Ticker(
+                inst_id=i,
+                last=1.0,
+                bid=0.99,
+                ask=1.01,
+                volume_24h_quote=v,
+                open_24h=0.8 if i == "UNI-USDC" else None,
+            )
             for i, v in [
                 ("UNI-USDC", 1e6),
                 ("SOL-USDC", 5e6),
@@ -397,6 +404,7 @@ class FakeOkx(Closeable):
             raise RuntimeError("boom")
         t0 = NOW - timedelta(hours=4)
         mult = 2.0 if inst_id == "SOL-USDC" else 1.0
+        close = 12.0 if inst_id == "SOL-USDC" else 11.0
         return [
             Candle(
                 ts=t0,
@@ -413,7 +421,7 @@ class FakeOkx(Closeable):
                 open=10,
                 high=12,
                 low=9,
-                close=11,
+                close=close,
                 volume=1,
                 volume_quote=50 * mult,
                 confirmed=False,
@@ -522,10 +530,13 @@ async def test_cache_expires(tmp_path: Path) -> None:
 
 async def test_load_pairs_filters_and_measures_4h() -> None:
     pairs = await load_pairs(FakeOkx())  # type: ignore[arg-type]
+    # By 4h change, highest first; pairs whose candles failed go last.
     assert [p.inst_id for p in pairs] == ["SOL-USDC", "UNI-USDC", "BAD-USDC"]
-    sol = pairs[0]
-    assert sol.change_4h == pytest.approx(0.1) and sol.volume_4h == 300
-    assert pairs[1].listed == 1_500_000_000_000  # the oldest listing of the coin
+    sol, uni = pairs[0], pairs[1]
+    assert sol.change_4h == pytest.approx(0.2) and sol.volume_4h == 300
+    assert uni.change_4h == pytest.approx(0.1)
+    assert uni.change_24h == pytest.approx(0.25) and sol.change_24h is None
+    assert uni.listed == 1_500_000_000_000  # the oldest listing of the coin
     assert pairs[2].change_4h is None
     assert window([]) == (None, None)
 
@@ -605,11 +616,22 @@ def service(tmp_path: Path) -> FundamentalsService:
 
 
 def test_sort_pairs() -> None:
-    pairs = [Pair("A-USDC", 1, 0.1, 10, 5), Pair("B-USDC", 1, None, None, 50)]
-    assert [p.base for p in sort_pairs(pairs, "cambio", True)] == ["A", "B"]
-    assert [p.base for p in sort_pairs(pairs, "volumen24", True)] == ["B", "A"]
-    assert [p.base for p in sort_pairs(pairs, "par", False, "b")] == ["B"]
-    assert [p.base for p in sort_pairs(pairs, "nope", True)] == ["A", "B"]
+    pairs = [
+        Pair("A-USDC", 1, 0.1, 10, 5, change_24h=None),
+        Pair("B-USDC", 1, None, None, 50, change_24h=-0.1),
+        Pair("C-USDC", 1, 0.3, 1, 1, change_24h=0.2),
+    ]
+
+    def order(*args: Any, **kwargs: Any) -> list[str]:
+        return [p.base for p in sort_pairs(pairs, *args, **kwargs)]
+
+    assert order("cambio", True) == ["C", "A", "B"]
+    assert order("cambio", False) == ["B", "A", "C"]
+    assert order("cambio24", True) == ["C", "B", "A"]
+    assert order("volumen24", True) == ["B", "A", "C"]
+    assert order("puntos", True, scores={"B": 70, "A": 40}) == ["B", "A", "C"]
+    assert order("par", False, "b") == ["B"]
+    assert order("nope", True) == order("cambio", True)
 
 
 async def test_service_refresh_persists_and_reports_errors(tmp_path: Path) -> None:
@@ -638,6 +660,9 @@ async def test_pages(tmp_path: Path) -> None:
     await svc.refresh()
     ingress = {"X-Ingress-Path": "/api/hassio_ingress/tok"}
     with TestClient(create_app(svc)) as client:
+        default = client.get("/").text
+        assert "Cambio 4 h ↓" in default and "Cambio 24 h" in default
+        assert "Analizar todas" in default and "3 pares sin análisis reciente" in default
         page = client.get("/?orden=cambio&dir=asc&q=so", headers=ingress)
         assert page.status_code == 200
         assert 'href="/api/hassio_ingress/tok/moneda/SOL"' in page.text
@@ -692,3 +717,92 @@ def test_cli_analyze(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     assert "Riesgo de liquidez" in result.output and "CoinGecko: ok" in result.output
     missing = runner.invoke(cli.app, ["fundamentals", "analyze", "nope"])
     assert missing.exit_code == 1
+
+
+async def test_bulk_analyses_every_pending_pair(tmp_path: Path) -> None:
+    svc = service(tmp_path)
+    await svc.refresh()
+    await svc.analysis("UNI")  # already fresh: reused, not read again
+    assert [p.base for p in svc.pending()] == ["SOL", "BAD"]
+    assert svc.start_bulk()
+    assert not svc.start_bulk()  # one at a time
+    assert svc._bulk_task is not None
+    await svc._bulk_task
+    run = svc.bulk
+    assert run is not None and not run.running
+    assert (run.total, run.done, run.reused) == (3, 3, 1)
+    assert run.incomplete == 0 and run.current == ""
+    assert svc.cached("SOL") is not None and svc.cached("BAD") is not None
+    assert svc.pending() == []
+
+    with TestClient(create_app(svc)) as client:
+        text = client.get("/").text
+    assert "Todas tienen un análisis reciente" in text and "Última pasada: 3 de 3" in text
+    await svc.aclose()
+
+
+async def test_bulk_can_be_stopped_and_counts_failures(tmp_path: Path) -> None:
+    svc = service(tmp_path)
+    await svc.refresh()
+    seen: list[str] = []
+
+    async def analysis(symbol: str, *, refresh: bool = False) -> Analysis | None:
+        seen.append(symbol)
+        assert svc.bulk is not None
+        svc.cancel_bulk()
+        raise RuntimeError("boom")
+
+    svc.analysis = analysis  # type: ignore[method-assign]
+    svc.start_bulk()
+    assert svc._bulk_task is not None
+    await svc._bulk_task
+    assert seen == ["SOL"]  # stopped after the first one
+    assert svc.bulk is not None and svc.bulk.cancelled and svc.bulk.incomplete == 1
+    svc.cancel_bulk()  # nothing running: no effect
+    await svc.aclose()
+
+
+async def test_bulk_pages_and_coingecko_usage(tmp_path: Path) -> None:
+    svc = service(tmp_path)
+    await svc.refresh()
+    svc._count_coingecko()
+    svc._count_coingecko()
+    assert svc.coingecko_calls == 2
+    with TestClient(create_app(svc)) as client:
+        text = client.get("/").text
+        assert "este mes van 2 de 10.000" in text
+        assert "Sin clave de CoinGecko" in text and "Sin token de GitHub" in text
+        r = client.post("/analizar-todo", follow_redirects=False)
+        assert r.status_code == 303 and svc.bulk is not None
+        svc.bulk = BulkRun(total=3, started=NOW.timestamp(), done=1, current="SOL")
+        running = client.get("/").text
+        assert "1 de 3 · ahora SOL" in running
+        assert 'http-equiv="refresh"' in running and "Detener" in running
+        r = client.post("/analizar-todo/detener", follow_redirects=False)
+        assert r.status_code == 303 and svc.bulk.cancelled
+    fresh = service(tmp_path / "other")  # nothing analysed yet
+    await fresh.refresh()
+    fresh.cache.put(fresh._usage_key(), 9_999)
+    with TestClient(create_app(fresh)) as client:
+        assert "superaría las 10.000 consultas" in client.get("/").text
+
+
+def test_cache_bump(tmp_path: Path) -> None:
+    cache = Cache(tmp_path / "c.db")
+    assert cache.bump("n") == 1 and cache.bump("n") == 2 and cache.get("n") == 2
+
+
+@respx.mock
+async def test_on_call_counts_every_request() -> None:
+    respx.get(f"{COINGECKO_URL}/coins/markets").mock(
+        side_effect=[httpx.Response(429), httpx.Response(200, json=[])]
+    )
+    calls: list[int] = []
+    async with CoinGecko(sleep=no_sleep, backoff=0, on_call=lambda: calls.append(1)) as cg:
+        assert await cg.markets(1) == []
+    assert len(calls) == 2  # the retry counts too
+
+
+def test_ticker_reads_open_24h() -> None:
+    t = Ticker.from_api({"instId": "A-USDC", "last": "2", "open24h": "1.6", "volCcy24h": "5"})
+    assert t.open_24h == 1.6

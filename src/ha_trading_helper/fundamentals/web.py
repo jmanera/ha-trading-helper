@@ -6,6 +6,7 @@ Links and redirects are built on the ``X-Ingress-Path`` header, like the journal
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -19,6 +20,10 @@ from ha_trading_helper import __version__
 from ha_trading_helper.fundamentals import fmt
 from ha_trading_helper.fundamentals.market import Pair
 from ha_trading_helper.fundamentals.scoring import CATEGORY_LABELS
+from ha_trading_helper.fundamentals.service import (
+    COINGECKO_CALLS_PER_COIN,
+    COINGECKO_MONTHLY,
+)
 
 if TYPE_CHECKING:
     from ha_trading_helper.fundamentals.service import FundamentalsService
@@ -26,12 +31,18 @@ if TYPE_CHECKING:
 TEMPLATES = Path(__file__).parent / "templates"
 SYMBOL = re.compile(r"^[A-Za-z0-9]{1,20}$")
 
-SORTS: dict[str, tuple[str, Any]] = {
-    "volumen": ("Volumen 4 h", lambda p: p.volume_4h or 0.0),
-    "cambio": ("Cambio 4 h", lambda p: p.change_4h if p.change_4h is not None else -9.0),
-    "volumen24": ("Volumen 24 h", lambda p: p.volume_24h),
-    "par": ("Par", lambda p: p.inst_id),
+MISSING = -1e9  # pairs without the value go last when sorting from high to low
+
+# Each key sorts on the pair and the fundamental scores already computed.
+SORTS: dict[str, Callable[[Pair, dict[str, float]], Any]] = {
+    "cambio": lambda p, _: p.change_4h if p.change_4h is not None else MISSING,
+    "cambio24": lambda p, _: p.change_24h if p.change_24h is not None else MISSING,
+    "volumen": lambda p, _: p.volume_4h or 0.0,
+    "volumen24": lambda p, _: p.volume_24h,
+    "puntos": lambda p, scores: scores.get(p.base, MISSING),
+    "par": lambda p, _: p.inst_id,
 }
+DEFAULT_SORT = "cambio"
 
 
 def tone(value: float | None) -> str:
@@ -54,10 +65,18 @@ def outlook_tone(outlook: str) -> str:
     return {"alcista": "pos", "bajista": "neg"}.get(outlook, "mid")
 
 
-def sort_pairs(pairs: list[Pair], key: str, descending: bool, query: str = "") -> list[Pair]:
+def sort_pairs(
+    pairs: list[Pair],
+    key: str,
+    descending: bool,
+    query: str = "",
+    scores: dict[str, float] | None = None,
+) -> list[Pair]:
     q = query.strip().upper()
     rows = [p for p in pairs if q in p.inst_id] if q else list(pairs)
-    return sorted(rows, key=SORTS.get(key, SORTS["volumen"])[1], reverse=descending)
+    sort = SORTS.get(key, SORTS[DEFAULT_SORT])
+    known = scores or {}
+    return sorted(rows, key=lambda p: sort(p, known), reverse=descending)
 
 
 def create_app(service: FundamentalsService, *, timezone: str = "Europe/Madrid") -> FastAPI:
@@ -96,21 +115,35 @@ def create_app(service: FundamentalsService, *, timezone: str = "Europe/Madrid")
 
     @app.get("/", response_class=HTMLResponse)
     def pairs(
-        request: Request, orden: str = "volumen", dir: str = "desc", q: str = ""
+        request: Request, orden: str = DEFAULT_SORT, dir: str = "desc", q: str = ""
     ) -> HTMLResponse:
-        key = orden if orden in SORTS else "volumen"
+        key = orden if orden in SORTS else DEFAULT_SORT
         descending = dir != "asc"
-        rows = sort_pairs(service.pairs, key, descending, q)
+        analyses = {p.base: a for p in service.pairs if (a := service.cached(p.base))}
+        scores = {k: s for k, a in analyses.items() if (s := a.scores.overall) is not None}
+        rows = sort_pairs(service.pairs, key, descending, q, scores)
+        pending = len(service.pairs) - len(analyses)
+        calls = pending * COINGECKO_CALLS_PER_COIN
+        per_minute = 25 if service.settings.coingecko_api_key else 5
         return render(
             request,
             "pairs.html",
             rows=rows,
             total=len(service.pairs),
-            analyses={p.base: a for p in rows if (a := service.cached(p.base))},
-            sorts=SORTS,
+            analyses=analyses,
             orden=key,
             descending=descending,
             q=q,
+            bulk=service.bulk,
+            pending=pending,
+            estimate={
+                "calls": calls,
+                "minutes": calls / per_minute,
+                "used": service.coingecko_calls,
+                "monthly": COINGECKO_MONTHLY,
+                "key": bool(service.settings.coingecko_api_key),
+                "github": bool(service.settings.github_token),
+            },
         )
 
     @app.get("/moneda/{symbol}", response_class=HTMLResponse)
@@ -132,6 +165,16 @@ def create_app(service: FundamentalsService, *, timezone: str = "Europe/Madrid")
         if SYMBOL.match(symbol) and service.pair(symbol) is not None:
             await service.analysis(symbol, refresh=True)
             return _redirect(request, f"moneda/{symbol.upper()}")
+        return _redirect(request, "")
+
+    @app.post("/analizar-todo")
+    async def analyze_all(request: Request) -> RedirectResponse:
+        service.start_bulk()
+        return _redirect(request, "")
+
+    @app.post("/analizar-todo/detener")
+    def stop_all(request: Request) -> RedirectResponse:
+        service.cancel_bulk()
         return _redirect(request, "")
 
     @app.post("/actualizar")

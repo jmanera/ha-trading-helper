@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Análisis fundamental</title>
+{% block head %}{% endblock %}
 <style>
 :root {
   --bg: #f6f7f9; --card: #ffffff; --text: #1d2330; --muted: #667085; --line: #e4e7ec;
@@ -84,6 +85,7 @@ label { font-size: 13px; color: var(--muted); display: grid; gap: 3px; }
 input, select, textarea, button { font: inherit; color: var(--text); background: var(--card);
   border: 1px solid var(--line); border-radius: 7px; padding: 6px 9px; }
 button { background: var(--accent); color: #fff; border-color: var(--accent); cursor: pointer; }
+button:disabled { opacity: .5; cursor: default; }
 button.ghost { background: transparent; color: var(--accent); }
 .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
 .tabs a { text-decoration: none; color: var(--muted); padding: 5px 11px; border-radius: 999px;
