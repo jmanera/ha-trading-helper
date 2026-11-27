@@ -3,6 +3,7 @@
 - ``/api/v5/market/candles``: most recent candles, up to 300 per request.
 - ``/api/v5/market/history-candles``: older candles, up to 100 per request.
 - ``/api/v5/market/tickers``: 24h stats for every instrument of a type.
+- ``/api/v5/market/books``: order book, up to 400 levels a side.
 
 Pagination goes backwards in time with ``after`` (return records older than ``ts``).
 """
@@ -49,13 +50,14 @@ class OkxClient:
         self._max_retries = max_retries
         self._backoff = backoff
         self._sleep = sleep
-        # Documented limits: candles 40/2s, history-candles 20/2s, tickers 20/2s.
+        # Documented limits: candles 40/2s, history-candles 20/2s, tickers 20/2s, books 40/2s.
         # Stay a bit below them.
         self._limiters = {
             "/api/v5/market/candles": RateLimiter(30, 2.0, sleep=sleep),
             "/api/v5/market/history-candles": RateLimiter(15, 2.0, sleep=sleep),
             "/api/v5/market/tickers": RateLimiter(15, 2.0, sleep=sleep),
             "/api/v5/public/instruments": RateLimiter(15, 2.0, sleep=sleep),
+            "/api/v5/market/books": RateLimiter(30, 2.0, sleep=sleep),
         }
 
     async def __aenter__(self) -> Self:
@@ -112,6 +114,18 @@ class OkxClient:
     async def instruments(self, inst_type: str = "SPOT") -> list[Instrument]:
         data = await self._get("/api/v5/public/instruments", {"instType": inst_type})
         return [Instrument.from_api(item) for item in data]
+
+    async def order_book(
+        self, inst_id: str, depth: int = 400
+    ) -> tuple[list[tuple[float, float]], list[tuple[float, float]]]:
+        """(bids, asks) as (price, size in base currency), best first."""
+        data = await self._get("/api/v5/market/books", {"instId": inst_id, "sz": str(depth)})
+        if not data:
+            return [], []
+        book = data[0]
+        bids = [(float(r[0]), float(r[1])) for r in book.get("bids", [])]
+        asks = [(float(r[0]), float(r[1])) for r in book.get("asks", [])]
+        return bids, asks
 
     async def recent_candles(
         self, inst_id: str, bar: str = "4H", limit: int = RECENT_LIMIT

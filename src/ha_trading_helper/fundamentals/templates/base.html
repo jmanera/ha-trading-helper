@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Análisis fundamental</title>
+<style>
+:root {
+  --bg: #f6f7f9; --card: #ffffff; --text: #1d2330; --muted: #667085; --line: #e4e7ec;
+  --accent: #2f6fde; --accent-soft: rgba(47, 111, 222, .12); --second: #a0a8b8;
+  --pos: #12805c; --neg: #c8372d; --pos-bg: rgba(18, 128, 92, .1); --neg-bg: rgba(200, 55, 45, .1);
+  --chip: #eef1f5; --mid: #a15c00; --mid-bg: rgba(214, 140, 0, .14);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #111418; --card: #1a1e24; --text: #e6e9ef; --muted: #98a2b3; --line: #2b313a;
+    --accent: #6ea1ff; --accent-soft: rgba(110, 161, 255, .16); --second: #5d6675;
+    --pos: #3ccf91; --neg: #ff6b5e; --pos-bg: rgba(60, 207, 145, .12); --neg-bg: rgba(255, 107, 94, .12);
+    --chip: #242a33; --mid: #f0b44c; --mid-bg: rgba(240, 180, 76, .14);
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text);
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+header { background: var(--card); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 2; }
+.bar { max-width: 1180px; margin: 0 auto; padding: 0 16px; display: flex; align-items: center;
+  gap: 16px; flex-wrap: wrap; }
+.brand { font-weight: 650; padding: 12px 0; }
+nav { display: flex; gap: 2px; overflow-x: auto; }
+nav a { color: var(--muted); text-decoration: none; padding: 14px 12px; border-bottom: 2px solid transparent;
+  white-space: nowrap; }
+nav a.on { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
+main { max-width: 1180px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: 22px; margin: 0 0 4px; }
+h2 { font-size: 17px; margin: 28px 0 10px; }
+.lead { color: var(--muted); margin: 0 0 18px; max-width: 760px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+.card .k { color: var(--muted); font-size: 13px; }
+.card .v { font-size: 22px; font-weight: 650; margin-top: 2px; font-variant-numeric: tabular-nums; }
+.card .s { color: var(--muted); font-size: 13px; margin-top: 2px; }
+.panel { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px;
+  margin-top: 12px; }
+.scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th, td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: right; vertical-align: top; }
+th { color: var(--muted); font-weight: 550; font-size: 13px; white-space: nowrap; }
+th:first-child, td:first-child, .l { text-align: left; }
+tr:last-child td { border-bottom: 0; }
+tfoot td { font-weight: 650; border-top: 1px solid var(--line); }
+.pos { color: var(--pos); } .neg { color: var(--neg); }
+.muted { color: var(--muted); } .small { font-size: 13px; }
+.chip { display: inline-block; background: var(--chip); border-radius: 999px; padding: 1px 8px;
+  font-size: 12px; color: var(--muted); white-space: nowrap; }
+.chip.pos { background: var(--pos-bg); color: var(--pos); } .chip.neg { background: var(--neg-bg); color: var(--neg); }
+a { color: var(--accent); }
+.mid { color: var(--mid); }
+.chip.mid { background: var(--mid-bg); color: var(--mid); }
+.meter b.pos { background: var(--pos); } .meter b.neg { background: var(--neg); } .meter b.mid { background: var(--mid); }
+.coin { display: flex; gap: 12px; align-items: center; } .coin img { width: 40px; height: 40px; border-radius: 50%; }
+.links { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0 0; } .links a { text-decoration: none; }
+.groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 12px; }
+.groups .panel { margin-top: 0; } .groups h3 { margin: 0 0 6px; font-size: 15px; display: flex; justify-content: space-between; }
+.why { color: var(--muted); font-size: 12px; text-align: left; }
+ul.reasons { margin: 6px 0 0; padding-left: 20px; }
+a.sort { color: inherit; text-decoration: none; } a.sort.on { color: var(--text); }
+@media (max-width: 640px) { .wide { display: none; } }
+.chart { width: 100%; height: auto; display: block; }
+.chart .grid { stroke: var(--line); stroke-width: 1; }
+.chart .axis { fill: var(--muted); font-size: 11px; }
+.chart .line { fill: none; stroke-width: 2; stroke-linejoin: round; }
+.chart .line.s0, .chart .dot.s0 { stroke: var(--accent); fill: var(--accent); }
+.chart .line.s0 { fill: none; }
+.chart .line.s1 { stroke: var(--second); stroke-dasharray: 5 4; }
+.chart .area { fill: var(--accent-soft); }
+.chart .bar.pos { fill: var(--pos); } .chart .bar.neg { fill: var(--neg); }
+.chart .zero { stroke: var(--muted); stroke-width: 1; }
+.legend { display: flex; gap: 16px; color: var(--muted); font-size: 13px; margin-top: 4px; }
+.legend i { display: inline-block; width: 14px; height: 3px; vertical-align: middle; margin-right: 6px; }
+.meter { height: 6px; background: var(--chip); border-radius: 3px; min-width: 60px; }
+.meter b { display: block; height: 6px; background: var(--accent); border-radius: 3px; }
+form.inline { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; }
+label { font-size: 13px; color: var(--muted); display: grid; gap: 3px; }
+input, select, textarea, button { font: inherit; color: var(--text); background: var(--card);
+  border: 1px solid var(--line); border-radius: 7px; padding: 6px 9px; }
+button { background: var(--accent); color: #fff; border-color: var(--accent); cursor: pointer; }
+button.ghost { background: transparent; color: var(--accent); }
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.tabs a { text-decoration: none; color: var(--muted); padding: 5px 11px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--card); }
+.tabs a.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+details summary { cursor: pointer; color: var(--accent); }
+details[open] summary { margin-bottom: 8px; }
+.note { white-space: pre-wrap; max-width: 360px; text-align: left; }
+textarea { width: 100%; min-height: 60px; }
+footer { max-width: 1180px; margin: 0 auto; padding: 0 16px 24px; color: var(--muted); font-size: 13px;
+  display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.warn { background: var(--neg-bg); color: var(--neg); border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; }
+@media (max-width: 640px) { .card .v { font-size: 19px; } th, td { padding: 7px 6px; } }
+</style>
+</head>
+<body>
+<header><div class="bar">
+  <div class="brand">Análisis fundamental</div>
+  <nav><a href="{{ base }}/" class="on">Pares USDC</a></nav>
+</div></header>
+<main>
+{% if error %}<div class="warn">La última lectura de OKX falló: {{ error }}</div>{% endif %}
+{% block content %}{% endblock %}
+</main>
+<footer>
+  <span>Datos de OKX, CoinGecko, DefiLlama y GitHub · no es asesoramiento financiero</span>
+  <span>v{{ version }}</span>
+</footer>
+</body>
+</html>

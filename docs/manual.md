@@ -1,6 +1,6 @@
 # Manual de uso
 
-Guía completa de las tres apps de Home Assistant del repositorio. Para una visión general con
+Guía completa de las apps de Home Assistant del repositorio. Para una visión general con
 capturas, mira el [README](../README.md).
 
 > No es asesoramiento financiero. Las criptomonedas pueden perder gran parte de su valor y los
@@ -232,7 +232,7 @@ wear/            apps de Wear OS, un módulo de Gradle cada una (okx-journal-fac
 
 `indicators/` y `strategy/` no tocan red ni reloj y tienen cobertura del 100 %. La CI
 (GitHub Actions) ejecuta lint, mypy estricto, tests (incluida integración con Mosquitto real),
-auditoría de dependencias, construye la imagen de las tres apps para amd64 y arm64, y cada lunes
+auditoría de dependencias, construye la imagen de las cuatro apps para amd64 y arm64, y cada lunes
 repite la validación con datos reales de OKX.
 
 Las capturas del README salen de datos inventados, nunca de una cuenta real:

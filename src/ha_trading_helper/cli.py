@@ -301,3 +301,59 @@ def journal_status() -> None:
     data = Data.load(Store(settings.db_url()))
     for key, value in payloads.summary(data).items():
         typer.echo(f"{key:<22} {value}")
+
+
+fundamentals_app = typer.Typer(
+    no_args_is_help=True, help="Fundamental analysis of the OKX crypto/USDC pairs."
+)
+app.add_typer(fundamentals_app, name="fundamentals")
+
+
+@fundamentals_app.command("serve")
+def fundamentals_serve() -> None:
+    """Run forever: the web panel and the 4h pair list refreshed every few minutes."""
+    from ha_trading_helper.fundamentals.config import FundamentalsSettings
+    from ha_trading_helper.fundamentals.service import FundamentalsService
+
+    settings = FundamentalsSettings()
+    setup_logging(settings.log_level, json_logs=True)
+    asyncio.run(FundamentalsService(settings).run_forever())
+
+
+@fundamentals_app.command("analyze")
+def fundamentals_analyze(
+    symbol: Annotated[str, typer.Argument(help="Base currency, e.g. SOL")],
+    refresh: Annotated[bool, typer.Option(help="Ignore the cached analysis")] = False,
+) -> None:
+    """Analyse one coin with a USDC pair on OKX and print its scores."""
+    from ha_trading_helper.fundamentals.config import FundamentalsSettings
+    from ha_trading_helper.fundamentals.service import FundamentalsService
+
+    settings = FundamentalsSettings()
+    setup_logging(settings.log_level)
+
+    async def run() -> None:
+        service = FundamentalsService(settings)
+        try:
+            if service.pair(symbol) is None:
+                await service.refresh()
+            analysis = await service.analysis(symbol, refresh=refresh)
+        finally:
+            await service.aclose()
+        if analysis is None:
+            typer.echo(f"No hay par {symbol.upper()}-USDC en OKX.", err=True)
+            raise typer.Exit(1)
+        s = analysis.scores
+        overall = f"{s.overall:.0f}" if s.overall is not None else "—"
+        typer.echo(f"{analysis.name or analysis.symbol} ({analysis.coin_id or '?'})")
+        typer.echo(f"Puntuación {overall}/100 · perspectiva {s.outlook} · datos {s.coverage:.0%}")
+        for g in [*s.categories, s.dilution, s.liquidity]:
+            value = f"{g.score:.0f}" if g.score is not None else "—"
+            level = f" ({g.level})" if hasattr(g, "level") and g.level else ""
+            typer.echo(f"  {g.label:<20} {value:>4}{level}")
+        for reason in s.reasons:
+            typer.echo(f"  · {reason}")
+        for name, status in analysis.sources.items():
+            typer.echo(f"  {name}: {status}")
+
+    asyncio.run(run())

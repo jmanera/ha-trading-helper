@@ -1,0 +1,21 @@
+configuration:
+  coingecko_api_key:
+    name: Clave Demo de CoinGecko
+    description: Gratis en coingecko.com/es/api/pricing (plan Demo). Sin ella CoinGecko solo admite unas pocas consultas por minuto y cada análisis tarda o falla.
+  github_token:
+    name: Token de GitHub
+    description: Un token sin ningún permiso (github.com/settings/tokens). Sin él GitHub admite 60 consultas por hora y la puntuación de desarrollo puede quedar sin datos.
+  refresh_minutes:
+    name: Actualizar la lista cada (minutos)
+    description: Cada cuánto se leen de OKX el cambio y el volumen de 4 h de todos los pares.
+  cache_hours:
+    name: Reutilizar un análisis durante (horas)
+    description: Los datos fundamentales cambian despacio. Puedes forzar una lectura nueva desde la página de cada moneda.
+  coin_ids:
+    name: Monedas de CoinGecko
+    description: Solo si un símbolo apunta a la moneda equivocada. Formato SIMBOLO=id-de-coingecko, por ejemplo TON=the-open-network.
+  timezone:
+    name: Zona horaria
+    description: Para mostrar fechas y horas.
+  log_level:
+    name: Nivel de registro

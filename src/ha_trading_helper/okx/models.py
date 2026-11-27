@@ -69,6 +69,7 @@ class Instrument(BaseModel):
     inst_id: str
     category: str  # "1" = crypto; other values are tokenised stocks, metals, etc.
     state: str
+    list_time: int | None = None  # ms
 
     @property
     def is_crypto_live(self) -> bool:
@@ -80,4 +81,5 @@ class Instrument(BaseModel):
             inst_id=item["instId"],
             category=item.get("instCategory", ""),
             state=item.get("state", ""),
+            list_time=int(item["listTime"]) if item.get("listTime") else None,
         )

@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Pares cripto/USDC en OKX</h1>
+<p class="lead">Cómo se han movido en las últimas 4 horas. Pulsa en un par para ver su análisis fundamental: tokenomics, adopción, finanzas, desarrollo y riesgos.</p>
+
+<form class="inline" method="get" action="{{ base }}/">
+  <label>Buscar<input type="search" name="q" value="{{ q }}" placeholder="BTC, SOL…"></label>
+  <input type="hidden" name="orden" value="{{ orden }}"><input type="hidden" name="dir" value="{{ 'desc' if descending else 'asc' }}">
+  <button type="submit">Buscar</button>
+  {% if q %}<a href="{{ base }}/?orden={{ orden }}&dir={{ 'desc' if descending else 'asc' }}" class="small">quitar búsqueda</a>{% endif %}
+</form>
+
+{% macro th(key, label, cls='') -%}
+  {% set on = orden == key %}
+  <th class="{{ cls }}"><a class="sort {{ 'on' if on }}" href="{{ base }}/?orden={{ key }}&dir={{ 'asc' if on and descending else 'desc' }}{% if q %}&q={{ q | urlencode }}{% endif %}">{{ label }}{% if on %} {{ '↓' if descending else '↑' }}{% endif %}</a></th>
+{% endmacro %}
+
+<div class="panel scroll" style="margin-top:12px">
+<table>
+  <thead><tr>
+    {{ th('par', 'Par') }}<th>Precio</th>{{ th('cambio', 'Cambio 4 h') }}{{ th('volumen', 'Volumen 4 h') }}{{ th('volumen24', 'Volumen 24 h', 'wide') }}<th>Fundamentales</th><th class="wide"></th>
+  </tr></thead>
+  <tbody>
+  {% for p in rows %}
+    {% set a = analyses.get(p.base) %}
+    <tr>
+      <td><a href="{{ base }}/moneda/{{ p.base }}" style="text-decoration:none"><b>{{ p.base }}</b></a><span class="muted">/USDC</span></td>
+      <td>{{ p.last | price }}</td>
+      <td class="{{ p.change_4h | tone }}">{{ p.change_4h | pct(2, sign=True) }}</td>
+      <td>{{ p.volume_4h | big }}</td>
+      <td class="muted wide">{{ p.volume_24h | big }}</td>
+      <td>{% if a %}{% set s = a.scores %}<span class="chip {{ s.overall | score_tone }}">{{ s.overall | num(0) if s.overall is not none else '—' }}/100</span> <span class="chip {{ s.outlook | outlook_tone }}">{{ s.outlook }}</span>{% else %}<span class="muted small">sin analizar</span>{% endif %}</td>
+      <td class="wide"><a href="{{ base }}/moneda/{{ p.base }}">Análisis →</a></td>
+    </tr>
+  {% else %}
+    <tr><td colspan="7" class="muted">{% if total %}Ningún par coincide con «{{ q }}».{% else %}Leyendo los pares de OKX: tarda unos 20 segundos al arrancar. Recarga la página en un momento.{% endif %}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+<p class="small muted">{{ rows | length }} de {{ total }} pares. Volúmenes en USDC, solo en OKX. Cambio y volumen de las últimas 48 velas de 5 minutos. Sin monedas estables ni acciones tokenizadas. La puntuación aparece cuando el par ya se ha analizado.</p>
+</div>
+<form method="post" action="{{ base }}/actualizar" style="margin-top:10px" class="inline">
+  <span class="small muted">{% if updated %}Actualizado {{ updated | when }}{% else %}Aún sin datos{% endif %}</span>
+  <button class="ghost" type="submit">Actualizar ahora</button>
+</form>
+{% endblock %}
