@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block content %}
+<p class="small"><a href="{{ base }}/">← Pares USDC</a></p>
+<div class="coin">
+  {% if a.image %}<img src="{{ a.image }}" alt="">{% endif %}
+  <div>
+    <h1>{{ a.name or a.symbol }} <span class="muted">{{ a.symbol }}/USDC</span></h1>
+    <div class="muted">{{ pair.last | price }} USDC · <span class="{{ pair.change_4h | tone }}">{{ pair.change_4h | pct(2, sign=True) }}</span> en 4 h · volumen 4 h {{ pair.volume_4h | big('USDC') }}</div>
+  </div>
+</div>
+{% if a.links %}<div class="links">{% for name, url in a.links.items() %}<a class="chip" href="{{ url }}" target="_blank" rel="noopener noreferrer">{{ name }} ↗</a>{% endfor %}</div>{% endif %}
+
+<div class="cards" style="margin-top:16px">
+  <div class="card"><div class="k">Puntuación fundamental</div>
+    <div class="v {{ s.overall | score_tone }}">{{ s.overall | num(0) if s.overall is not none else '—' }}<span class="muted" style="font-size:14px"> /100</span></div>
+    <div class="meter"><b class="{{ s.overall | score_tone }}" style="width:{{ s.overall or 0 }}%"></b></div>
+    <div class="s">con el {{ s.coverage | pct(0) }} de las métricas</div></div>
+  <div class="card"><div class="k">Perspectiva fundamental</div>
+    <div class="v {{ s.outlook | outlook_tone }}" style="text-transform:capitalize">{{ s.outlook }}</div>
+    <div class="s">alcista ≥ 65 sin riesgos altos · bajista &lt; 40</div></div>
+  {% for r in [s.dilution, s.liquidity] %}
+  <div class="card"><div class="k">{{ r.label }}</div>
+    <div class="v {{ r.level | risk_tone }}" style="text-transform:capitalize">{{ r.level or 'sin datos' }}</div>
+    <div class="s">{% if r.score is not none %}{{ r.score | num(0) }}/100 de riesgo{% endif %}</div></div>
+  {% endfor %}
+</div>
+
+<div class="cards" style="margin-top:12px">
+  {% for g in s.categories %}
+  <div class="card"><div class="k">{{ g.label }}</div>
+    <div class="v {{ g.score | score_tone }}">{{ g.score | num(0) if g.score is not none else '—' }}<span class="muted" style="font-size:14px"> /100</span></div>
+    <div class="meter"><b class="{{ g.score | score_tone }}" style="width:{{ g.score or 0 }}%"></b></div></div>
+  {% endfor %}
+</div>
+
+<div class="panel">
+  <b>Por qué</b>
+  <ul class="reasons">{% for r in s.reasons %}<li>{{ r }}</li>{% endfor %}</ul>
+</div>
+
+<h2>Detalle de cada puntuación</h2>
+<div class="groups">
+{% for g in s.categories + [s.dilution, s.liquidity] %}
+  {% set risk = g.key in ['dilution', 'liquidity'] %}
+  <div class="panel scroll">
+    <h3><span>{{ g.label }}</span><span class="{{ (g.level | risk_tone) if risk else (g.score | score_tone) }}">{{ g.score | num(0) if g.score is not none else '—' }}</span></h3>
+    <table>
+      <thead><tr><th>Métrica</th><th>Valor</th><th>{{ 'Riesgo' if risk else 'Puntos' }}</th></tr></thead>
+      <tbody>
+      {% for m in g.metrics %}
+        <tr>
+          <td class="l">{{ m.label }}<div class="why">{{ m.note }}</div></td>
+          <td style="white-space:nowrap">{% if m.points is none %}<span class="muted">sin datos</span>{% else %}{{ m.value }}{% endif %}</td>
+          <td style="min-width:70px">{% if m.points is not none %}{{ m.points | num(0) }}
+            <div class="meter"><b class="{{ ('neg' if m.points >= 65 else 'mid' if m.points >= 35 else 'pos') if risk else (m.points | score_tone) }}" style="width:{{ m.points }}%"></b></div>{% else %}—{% endif %}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endfor %}
+</div>
+
+{% if a.description or a.categories %}
+<h2>El proyecto</h2>
+<div class="panel">
+  {% if a.description %}<p style="margin-top:0">{{ a.description }}</p>{% endif %}
+  {% if a.categories %}<div class="links">{% for c in a.categories %}<span class="chip">{{ c }}</span>{% endfor %}</div>{% endif %}
+</div>
+{% endif %}
+
+<h2>Fuentes</h2>
+<div class="panel scroll">
+<table>
+  <tbody>
+  {% for name, status in a.sources.items() %}
+    <tr><td>{{ name }}</td><td class="l {{ 'pos' if status == 'ok' else 'neg' if status.startswith('error') else 'muted' }}">{{ status if status != 'ok' else 'datos leídos' }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+<form method="post" action="{{ base }}/moneda/{{ a.symbol }}/actualizar" class="inline" style="margin-top:10px">
+  <span class="small muted">Datos de {{ a.ts | when }}{% if a.coin_id %} · CoinGecko «{{ a.coin_id }}»{% endif %}</span>
+  <button class="ghost" type="submit">Volver a leer las fuentes</button>
+</form>
+</div>
+
+<details class="panel" style="margin-top:12px">
+<summary>Cómo se calcula</summary>
+<p>Cada métrica da de 0 a 100 puntos en una rampa recta entre dos umbrales (por ejemplo, la emisión anual: 0 % = 100 puntos, 25 % o más = 0). Cada apartado es la media ponderada de sus métricas con datos; la puntuación global es la media de los cuatro apartados, menos {{ 10 }} puntos por cada riesgo alto.</p>
+<p>Los riesgos van al revés: 100 es el máximo riesgo. Bajo por debajo de 35, alto desde 65.</p>
+<p>Si una fuente responde pero no tiene nada (una moneda sin comisiones en DefiLlama o sin código en GitHub), la métrica cuenta como 0. Si una fuente falla, la métrica queda «sin datos» y no cuenta. Con menos del 40 % de métricas con datos la perspectiva queda neutral.</p>
+<p>Los umbrales son criterios razonables, no ajustados a precios pasados: la puntuación sirve para comparar proyectos, no predice la rentabilidad. No es asesoramiento financiero.</p>
+</details>
+{% endblock %}

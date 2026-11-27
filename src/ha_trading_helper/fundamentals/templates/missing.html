@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ symbol }}</h1>
+<p class="lead">No hay un par {{ symbol }}/USDC en OKX{% if not updated %}, o todavía no se ha leído la lista de pares{% endif %}.</p>
+<p><a href="{{ base }}/">← Volver a los pares</a></p>
+{% endblock %}

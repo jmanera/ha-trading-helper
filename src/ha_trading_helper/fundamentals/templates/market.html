@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% macro reading(r) -%}
+  {% if r %}<span class="fng {{ r.sentiment }}">{{ r.label }}</span> ({{ r.value }}){% else %}<span class="muted">sin registro</span>{% endif %}
+{%- endmacro %}
+{% block content %}
+<h1>Mercado cripto</h1>
+{% if global_error %}<div class="warn">La última lectura de CoinGecko falló: {{ global_error }}{% if g %} · se muestra la de {{ g.ts | when }}{% endif %}</div>{% endif %}
+{% if not g %}
+<p class="lead">Aún no hay datos del mercado: CoinGecko no ha respondido. Prueba a actualizar en un momento.</p>
+{% else %}
+<p class="lead">{% if g.fng is not none %}El sentimiento del mercado de criptomonedas es actualmente <b>{{ mood }}</b>, con un índice de miedo y codicia de <b class="fng {{ g.sentiment }}">{{ g.fng }} ({{ g.sentiment | fng_label }})</b>.{% else %}CoinGecko no ha dado el índice de miedo y codicia en esta lectura.{% endif %}</p>
+
+<div class="market">
+  <div class="panel">
+    <b>Índice de miedo y codicia</b>
+    {{ gauge | safe }}
+    {% if g.fng is not none %}
+    <div class="fng-value fng {{ g.sentiment }}">{{ g.fng }}</div>
+    <div class="fng-label fng {{ g.sentiment }}">{{ g.sentiment | fng_label }}</div>
+    {% if summary.streak > 1 %}<p class="small muted" style="text-align:center">El mercado lleva {{ summary.streak }} días seguidos en {{ g.sentiment | fng_label | lower }}.</p>{% endif %}
+    {% endif %}
+  </div>
+  <div class="panel">
+    <b>Datos históricos</b>
+    <dl class="hist" style="margin-top:8px">
+      <dt>Ayer</dt><dd>{{ reading(summary.yesterday) }}</dd>
+      <dt>La semana pasada</dt><dd>{{ reading(summary.last_week) }}</dd>
+      <dt>El mes pasado</dt><dd>{{ reading(summary.last_month) }}</dd>
+      <dt>Última vez en codicia</dt><dd>{{ reading(summary.last_greed) }}{% if summary.last_greed %} <span class="muted small">{{ summary.last_greed.day.strftime('%d/%m/%Y') }}</span>{% endif %}</dd>
+      <dt>Última vez en miedo</dt><dd>{{ reading(summary.last_fear) }}{% if summary.last_fear %} <span class="muted small">{{ summary.last_fear.day.strftime('%d/%m/%Y') }}</span>{% endif %}</dd>
+      <dt>Máximo registrado</dt><dd>{{ reading(summary.high) }}{% if summary.high %} <span class="muted small">{{ summary.high.day.strftime('%d/%m/%Y') }}</span>{% endif %}</dd>
+      <dt>Mínimo registrado</dt><dd>{{ reading(summary.low) }}{% if summary.low %} <span class="muted small">{{ summary.low.day.strftime('%d/%m/%Y') }}</span>{% endif %}</dd>
+    </dl>
+    <p class="small muted" style="margin-bottom:0">{% if summary.since %}{{ summary.days }} {{ 'día registrado' if summary.days == 1 else 'días registrados' }} desde el {{ summary.since.strftime('%d/%m/%Y') }}.{% endif %} El histórico de CoinGecko es de pago: la app guarda una lectura al día desde que se instaló, así que se va completando con el tiempo.</p>
+  </div>
+</div>
+
+<div class="panel">
+  <b>Gráfico del índice</b>
+  {% if chart %}{{ chart | safe }}{% else %}<p class="small muted">El gráfico aparece con dos días registrados: la app guarda una lectura al día.</p>{% endif %}
+  <div class="legend">{% for k in ['extreme_fear', 'fear', 'neutral', 'greed', 'extreme_greed'] %}<span><i style="background:var(--{{ k }});height:8px;width:8px;border-radius:50%"></i>{{ k | fng_label }}</span>{% endfor %}</div>
+</div>
+
+<h2>Visión general</h2>
+<div class="cards">
+  <div class="card"><div class="k">Capitalización total</div>
+    <div class="v">{{ g.market_cap | big('$') }}</div>
+    <div class="s"><span class="{{ g.market_cap_change_24h | tone }}">{{ g.market_cap_change_24h | pct(2, sign=True) }}</span> en 24 h</div></div>
+  <div class="card"><div class="k">Volumen en 24 h</div>
+    <div class="v">{{ g.volume | big('$') }}</div>
+    <div class="s"><span class="{{ g.volume_change_24h | tone }}">{{ g.volume_change_24h | pct(2, sign=True) }}</span> frente al día anterior</div></div>
+  {% for coin, share in g.dominance.items() %}{% if loop.index <= 2 %}
+  <div class="card"><div class="k">Dominancia de {{ coin | upper }}</div>
+    <div class="v">{{ share | pct(1) }}</div>
+    <div class="meter"><b style="width:{{ 100 * share }}%"></b></div></div>
+  {% endif %}{% endfor %}
+  <div class="card"><div class="k">Criptomonedas activas</div>
+    <div class="v">{{ g.active | num(0) if g.active is not none else '—' }}</div>
+    <div class="s">en {{ g.markets | num(0) if g.markets is not none else '—' }} mercados</div></div>
+</div>
+
+{% if g.dominance %}
+<div class="panel scroll">
+  <b>Reparto de la capitalización</b>
+  <table style="margin-top:6px">
+    <thead><tr><th>Moneda</th><th>Dominancia</th><th class="l" style="width:50%"></th></tr></thead>
+    <tbody>
+    {% for coin, share in g.dominance.items() %}
+      <tr><td><b>{{ coin | upper }}</b></td><td>{{ share | pct(2) }}</td><td class="l"><div class="meter"><b style="width:{{ 100 * share / (g.dominance.values() | first) }}%"></b></div></td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<div class="panel">
+  <b>Cómo se lee</b>
+  <p class="small" style="margin:6px 0 0">CoinGecko calcula el índice de 0 a 100 con el comportamiento del mercado: 0-30 miedo extremo, 31-45 miedo, 46-55 neutral, 56-70 codicia y 71-100 codicia extrema. El miedo extremo suele coincidir con caídas fuertes y ventas por pánico; la codicia extrema, con subidas eufóricas. Es un termómetro del ánimo, no una señal de compra o venta.</p>
+</div>
+{% endif %}
+
+<form method="post" action="{{ base }}/mercado/actualizar" style="margin-top:10px" class="inline">
+  <span class="small muted">{% if g %}Datos de CoinGecko del {{ g.ts | when }} · se leen como mucho cada 30 min{% else %}Aún sin datos{% endif %}</span>
+  <button class="ghost" type="submit">Actualizar ahora</button>
+</form>
+{% endblock %}

@@ -38,6 +38,7 @@ class Ticker(BaseModel):
     bid: float | None
     ask: float | None
     volume_24h_quote: float
+    open_24h: float | None = None  # price 24 h ago (rolling window)
 
     @property
     def quote(self) -> str:
@@ -62,6 +63,7 @@ class Ticker(BaseModel):
             ask=num("askPx"),
             # For SPOT, volCcy24h is the 24h volume in the quote currency.
             volume_24h_quote=num("volCcy24h") or 0.0,
+            open_24h=num("open24h"),
         )
 
 
@@ -69,6 +71,7 @@ class Instrument(BaseModel):
     inst_id: str
     category: str  # "1" = crypto; other values are tokenised stocks, metals, etc.
     state: str
+    list_time: int | None = None  # ms
 
     @property
     def is_crypto_live(self) -> bool:
@@ -80,4 +83,5 @@ class Instrument(BaseModel):
             inst_id=item["instId"],
             category=item.get("instCategory", ""),
             state=item.get("state", ""),
+            list_time=int(item["listTime"]) if item.get("listTime") else None,
         )

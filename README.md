@@ -2,8 +2,8 @@
 
 # HA Trading Helper
 
-**Tres apps de Home Assistant y una esfera de reloj para seguir el mercado cripto de OKX y
-llevar un diario de tus inversiones, explicadas en lenguaje llano.**
+**Cuatro apps de Home Assistant y una esfera de reloj para seguir el mercado cripto de OKX,
+analizar sus fundamentales y llevar un diario de tus inversiones, explicadas en lenguaje llano.**
 
 [![CI](https://github.com/jmanera/ha-trading-helper/actions/workflows/ci.yml/badge.svg)](https://github.com/jmanera/ha-trading-helper/actions/workflows/ci.yml)
 ![Python 3.12](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)
@@ -24,7 +24,7 @@ llevar un diario de tus inversiones, explicadas en lenguaje llano.**
 > estrategia de señales **no ha demostrado ventaja** fuera de muestra
 > ([validación](docs/validation.md)): las señales son informativas.
 
-## Las tres apps
+## Las apps
 
 <table>
 <tr>
@@ -58,6 +58,15 @@ por activo y notas propias en cada operación. Guarda el histórico en MariaDB.
 </td>
 </tr>
 </table>
+
+### 🔎 Análisis fundamental
+
+Todos los pares cripto/USDC de OKX con su cambio y volumen de las últimas 4 horas y, en cada
+uno, un **análisis fundamental**: puntuación de 0 a 100, tokenomics, adopción, finanzas,
+desarrollo, riesgo de dilución y de liquidez y perspectiva alcista, neutral o bajista, cada
+métrica explicada. Una pestaña **Mercado** muestra el índice de miedo y codicia de CoinGecko,
+su histórico y la capitalización y dominancia del mercado. Con datos públicos de OKX,
+CoinGecko, DefiLlama y GitHub ([cómo puntúa](crypto_fundamentals/DOCS.md)).
 
 ### ⌚ Y en la muñeca
 
@@ -126,12 +135,14 @@ flowchart LR
         S[Señales cripto<br/>cada cierre de vela]
         I[Monitor intradía<br/>cada 5 min]
         J[Bitácora OKX<br/>cada 5 min · ingress]
+        F[Análisis fundamental<br/>cada 5 min · ingress]
         M[(Mosquitto)]
         D[(MariaDB)]
         UI[Paneles, avisos<br/>y Telegram]
     end
     W[Esfera Wear OS<br/>complicaciones de HA]
-    OKX -- velas públicas --> S & I
+    OKX -- velas públicas --> S & I & F
+    APIs[(CoinGecko · DefiLlama<br/>GitHub)] --> F
     OKX -- clave de solo lectura --> J
     S & I & J -- MQTT Discovery --> M --> UI
     J <--> D
@@ -163,7 +174,7 @@ make up                                    # Mosquitto + Home Assistant + apps e
 Para instalarlas en tu Home Assistant como apps locales:
 
 ```bash
-make app-bundle    # dist/ha_trading_helper, dist/intraday_monitor y dist/okx_journal
+make app-bundle    # una carpeta por app en dist/
 ```
 
 Copia esas carpetas a `/addons/` y búscalas en *Ajustes → Apps → Tienda de apps*. El paso a
@@ -184,7 +195,7 @@ make wear-install   # compila wear/ e instala la esfera en el reloj conectado co
 | Cobertura | > 90 % en total y 100 % en indicadores y estrategia |
 | Tipos y estilo | `mypy --strict`, Ruff |
 | Seguridad | Bandit, pip-audit y escaneo de secretos |
-| CI | GitHub Actions: lo anterior, las imágenes de las tres apps para amd64 y arm64, y la esfera validada con el esquema oficial de Google y compilada |
+| CI | GitHub Actions: lo anterior, las imágenes de las cuatro apps para amd64 y arm64, y la esfera validada con el esquema oficial de Google y compilada |
 
 ```bash
 make check    # lint + tipos + tests + auditoría
@@ -192,8 +203,9 @@ make check    # lint + tipos + tests + auditoría
 
 ## Documentación
 
-- [Manual de uso](docs/manual.md): instalación, opciones, entidades y uso de las tres apps.
+- [Manual de uso](docs/manual.md): instalación, opciones, entidades y uso de las apps.
 - [Bitácora OKX](okx_journal/DOCS.md): requisitos, MariaDB y cómo calcula.
+- [Análisis fundamental](crypto_fundamentals/DOCS.md): fuentes, claves gratuitas y cómo puntúa.
 - [Apps de reloj](wear/README.md): la esfera, cómo instalarla y cómo añadir más apps de Wear OS.
 - [Validación](docs/validation.md) e [investigación](docs/research/) de la estrategia.
 - [Decisiones de diseño](docs/adr/).

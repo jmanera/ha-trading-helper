@@ -1,0 +1,32 @@
+name: Análisis fundamental
+version: "0.3.0"
+slug: crypto_fundamentals
+description: Pares cripto/USDC de OKX con su cambio y volumen en 4 h, y un análisis fundamental de cada moneda (tokenomics, adopción, finanzas, desarrollo y riesgos).
+url: https://github.com/jmanera/ha-trading-helper
+arch:
+  - amd64
+  - aarch64
+init: false
+startup: application
+boot: auto
+ingress: true
+ingress_port: 8099
+panel_icon: mdi:scale-balance
+panel_title: Fundamentales
+options:
+  coingecko_api_key: ""
+  github_token: ""
+  refresh_minutes: 5
+  cache_hours: 12
+  coin_ids: []
+  timezone: Europe/Madrid
+  log_level: INFO
+schema:
+  coingecko_api_key: password?
+  github_token: password?
+  refresh_minutes: int(1,60)
+  cache_hours: int(1,168)
+  coin_ids:
+    - match(^[A-Za-z0-9]+=[a-z0-9-]+$)
+  timezone: str
+  log_level: list(DEBUG|INFO|WARNING|ERROR)

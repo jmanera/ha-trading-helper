@@ -43,7 +43,7 @@ jobs:
     needs: check
     strategy:
       matrix:
-        app: [trading_helper, intraday_monitor, okx_journal]
+        app: [trading_helper, intraday_monitor, okx_journal, crypto_fundamentals]
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-qemu-action@v3
