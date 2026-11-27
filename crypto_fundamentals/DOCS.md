@@ -27,6 +27,12 @@ completos:
 - **Analizar todas**: analiza en segundo plano, una tras otra y de la más negociada a la
   menos, las monedas sin un análisis reciente. Muestra el progreso, se puede detener y sigue
   aunque cierres la página.
+- **Mercado**: el índice de miedo y codicia de CoinGecko en un dial de 0 a 100 (miedo extremo,
+  miedo, neutral, codicia, codicia extrema), los días seguidos al mismo nivel, el valor de ayer,
+  de hace una semana y de hace un mes, la última vez en codicia y en miedo, el máximo y el
+  mínimo, y un gráfico del histórico. Debajo, la visión general del mercado: capitalización
+  total y volumen de 24 h con su cambio, dominancia de cada moneda y número de criptomonedas y
+  mercados. Todo sale de `/global` de CoinGecko.
 - **Ficha de cada moneda**: puntuación fundamental (0-100), perspectiva (alcista, neutral o
   bajista), riesgo de dilución y riesgo de liquidez, las cuatro puntuaciones parciales y el
   detalle de cada métrica con su valor, sus puntos y por qué importa. Debajo, la descripción
@@ -37,7 +43,7 @@ completos:
 | Fuente | Qué aporta | Clave |
 |---|---|---|
 | OKX | Pares, velas de 5 min, libro de órdenes (profundidad y diferencial) | no |
-| CoinGecko | Capitalización, FDV, suministro, puesto, seguidores, máximo histórico, serie de 1 año | Demo, opcional |
+| CoinGecko | Capitalización, FDV, suministro, puesto, seguidores, máximo histórico, serie de 1 año; mercado global e índice de miedo y codicia | Demo, opcional |
 | DefiLlama | TVL de protocolos y cadenas, comisiones e ingresos de 30 días | no |
 | GitHub | Repositorios activos, último cambio, estrellas | token, opcional |
 
@@ -71,6 +77,18 @@ público), la métrica cuenta como 0. Si una fuente falla, queda «sin datos» y
 
 Los umbrales son criterios razonables, **no ajustados a precios pasados**: la puntuación sirve
 para comparar proyectos, no predice la rentabilidad.
+
+## Histórico del miedo y la codicia
+
+`/global` da solo el valor de hoy; el histórico de CoinGecko (`/global/fear_and_greed_chart`)
+es de los planes de pago. Por eso la app **guarda una lectura al día** (la última del día, en
+tu zona horaria) desde que se instala la versión 0.3.0, y el histórico se va llenando con el
+tiempo: «ayer» aparece al segundo día, «la semana pasada» a los siete, y el gráfico desde el
+segundo día. Se guardan los últimos 400 días.
+
+`/global` se lee al abrir la página como mucho cada 30 minutos y, aunque no la abras, cada 6
+horas para no perder días: menos de 1.500 consultas al mes con la página siempre abierta y
+unas 120 si no.
 
 ## Límites de las claves al analizar todas
 

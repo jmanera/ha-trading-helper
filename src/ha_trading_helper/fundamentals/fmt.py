@@ -11,11 +11,13 @@ def num(value: float, decimals: int = 2) -> str:
 
 
 def big(value: float | None, unit: str = "") -> str:
-    """1.234 → «1.234», 2,5e6 → «2,5 M», 3,1e9 → «3,1 mil M»."""
+    """1.234 → «1.234», 2,5e6 → «2,5 M», 3,1e9 → «3,1 mil M», 2,1e12 → «2,10 B»."""
     if value is None or math.isnan(value):
         return "—"
     suffix = f" {unit}" if unit else ""
     size = abs(value)
+    if size >= 1e12:
+        return f"{num(value / 1e12, 2)} B{suffix}"
     if size >= 1e9:
         return f"{num(value / 1e9, 1)} mil M{suffix}"
     if size >= 1e6:

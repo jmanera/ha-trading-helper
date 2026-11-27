@@ -11,7 +11,7 @@ import pytest
 import respx
 from fastapi.testclient import TestClient
 
-from ha_trading_helper.fundamentals import fmt
+from ha_trading_helper.fundamentals import fmt, sentiment
 from ha_trading_helper.fundamentals.analysis import (
     Analysis,
     Analyzer,
@@ -249,10 +249,34 @@ class Closeable:
         return None
 
 
+def global_payload(fng: int = 22, cap: float = 2.1e12) -> dict[str, Any]:
+    return {
+        "data": {
+            "active_cryptocurrencies": 21218,
+            "markets": 1525,
+            "total_market_cap": {"usd": cap, "btc": 1.0},
+            "total_volume": {"usd": 9.1e10},
+            "market_cap_percentage": {"eth": 9.8, "btc": 57.8, "usdt": 8.3},
+            "market_cap_change_percentage_24h_usd": -3.2,
+            "volume_change_percentage_24h_usd": -0.5,
+            "updated_at": 1795796057,
+            "fear_and_greed_index": {"value": fng, "sentiment": sentiment.level(fng)},
+        }
+    }
+
+
 class FakeCoinGecko(Closeable):
     def __init__(self) -> None:
         self.calls = 0
         self.fail = False
+        self.global_calls = 0
+        self.fng = 22
+
+    async def global_data(self) -> dict[str, Any]:
+        self.global_calls += 1
+        if self.fail:
+            raise SourceError("CoinGecko: caído")
+        return global_payload(self.fng)
 
     async def markets(self, page: int) -> list[dict[str, Any]]:
         if page > 1:
@@ -593,6 +617,10 @@ async def test_coingecko_endpoints_and_llama_series() -> None:
         assert await cg.markets(1) == []
         assert await cg.coin("a") == {"id": "a"}
         assert await cg.market_chart("a") == {"prices": []}
+        respx.get(f"{COINGECKO_URL}/global").mock(
+            return_value=httpx.Response(200, json=global_payload())
+        )
+        assert (await cg.global_data())["data"]["markets"] == 1525
         assert await llama.chain_tvl("A") == [{"date": 1, "tvl": 2}]
 
 
@@ -806,3 +834,139 @@ async def test_on_call_counts_every_request() -> None:
 def test_ticker_reads_open_24h() -> None:
     t = Ticker.from_api({"instId": "A-USDC", "last": "2", "open24h": "1.6", "volCcy24h": "5"})
     assert t.open_24h == 1.6
+
+
+# --- the whole market and the Fear & Greed Index ---------------------------------
+
+
+def test_fear_and_greed_levels() -> None:
+    assert [sentiment.level(v) for v in (0, 30, 31, 45, 46, 55, 56, 70, 71, 100)] == [
+        "extreme_fear",
+        "extreme_fear",
+        "fear",
+        "fear",
+        "neutral",
+        "neutral",
+        "greed",
+        "greed",
+        "extreme_greed",
+        "extreme_greed",
+    ]
+    assert sentiment.label("extreme_fear") == "Miedo extremo"
+    assert sentiment.label("otro") == "otro"
+    assert [sentiment.mood(s) for s in ("fear", "neutral", "extreme_greed")] == [
+        "bajista",
+        "neutral",
+        "alcista",
+    ]
+
+
+def test_global_parse_and_round_trip() -> None:
+    g = sentiment.Global.parse(global_payload())
+    assert g.fng == 22 and g.sentiment == "extreme_fear"
+    assert list(g.dominance) == ["btc", "eth", "usdt"]
+    assert g.dominance["btc"] == pytest.approx(0.578)
+    assert g.market_cap_change_24h == pytest.approx(-0.032)
+    assert sentiment.Global.from_json(g.to_json()) == g
+    bare = sentiment.Global.parse({"data": {"fear_and_greed_index": {"value": 60}}})
+    assert bare.sentiment == "greed" and bare.market_cap_change_24h is None
+    none = sentiment.Global.parse({})
+    assert none.fng is None and none.sentiment == ""
+    assert fmt.big(2.126e12, "$") == "2,13 B $"
+
+
+def history(values: dict[int, int], today: datetime = NOW) -> dict[str, Any]:
+    """Readings by days before ``today``."""
+    out: dict[str, Any] = {}
+    for ago, v in values.items():
+        g = sentiment.Global.parse(global_payload(v))
+        out = sentiment.record(out, (today - timedelta(days=ago)).date(), g)
+    return out
+
+
+def test_record_keeps_one_reading_a_day_and_the_latest_days() -> None:
+    day = NOW.date()
+    h = sentiment.record({}, day, sentiment.Global.parse(global_payload(20)))
+    h = sentiment.record(h, day, sentiment.Global.parse(global_payload(25)))
+    assert h == {day.isoformat(): {"v": 25, "s": "extreme_fear", "mc": 2.1e12, "btc": 0.578}}
+    assert sentiment.record(h, day, sentiment.Global.parse({})) == h
+    long = history({i: 50 for i in range(sentiment.HISTORY_DAYS + 5)})
+    assert len(long) == sentiment.HISTORY_DAYS
+    assert max(long) == day.isoformat()
+
+
+def test_summary_of_the_history() -> None:
+    h = history({0: 22, 1: 20, 2: 25, 3: 40, 7: 59, 30: 48, 40: 93, 41: 6})
+    s = sentiment.summarize(h, NOW.date())
+    assert s.days == 8 and s.since == (NOW - timedelta(days=41)).date()
+    assert s.streak == 3  # today, yesterday and the day before in extreme fear
+    assert s.yesterday and s.yesterday.value == 20 and s.yesterday.label == "Miedo extremo"
+    assert s.last_week and s.last_week.value == 59
+    assert s.last_month and s.last_month.sentiment == "neutral"
+    assert s.last_greed and s.last_greed.value == 59
+    assert s.last_fear and s.last_fear.value == 20  # before today
+    assert s.high and s.high.value == 93
+    assert s.low and s.low.value == 6
+    empty = sentiment.summarize({}, NOW.date())
+    assert empty.days == 0 and empty.yesterday is None
+
+
+def test_gauge_and_chart_svg() -> None:
+    svg = sentiment.gauge(22, "extreme_fear")
+    assert svg.count('class="band') == 5 and 'class="needle"' in svg
+    assert 'class="dot extreme_fear"' in svg
+    assert "needle" not in sentiment.gauge(None, "")
+    assert sentiment.history_chart([]) == ""
+    assert sentiment.history_chart(sentiment.readings(history({0: 50}))) == ""
+    two = sentiment.history_chart(sentiment.readings(history({0: 50, 3: 80})))
+    assert "<polyline" in two and 'class="dot neutral"' in two and 'r="4"' in two
+    many = sentiment.history_chart(sentiment.readings(history({i: i for i in range(80)})))
+    assert "<polyline" in many and 'r="3"' in many
+
+
+async def test_service_reads_global_rarely_and_records_the_day(tmp_path: Path) -> None:
+    svc = service(tmp_path)
+    cg: FakeCoinGecko = svc.sources[0]  # type: ignore[assignment]
+    assert svc.market is None and svc.history == {}
+    g = await svc.refresh_global()
+    assert g and g.fng == 22 and cg.global_calls == 1
+    await svc.refresh_global()  # still fresh
+    assert cg.global_calls == 1
+    cg.fng = 60
+    g = await svc.refresh_global(max_age=0)
+    assert g and g.fng == 60 and cg.global_calls == 2
+    assert next(iter(svc.history.values()))["v"] == 60  # one reading for today
+    cg.fail = True
+    g = await svc.refresh_global(max_age=0)
+    assert g and g.fng == 60 and "caído" in svc.global_error
+    await svc.aclose()
+
+
+async def test_market_page(tmp_path: Path) -> None:
+    svc = service(tmp_path)
+    cg: FakeCoinGecko = svc.sources[0]  # type: ignore[assignment]
+    ingress = {"X-Ingress-Path": "/api/hassio_ingress/tok"}
+    cg.fail = True
+    with TestClient(create_app(svc)) as client:
+        page = client.get("/mercado").text
+        assert "Aún no hay datos del mercado" in page and "falló" in page
+        cg.fail = False
+        page = client.get("/mercado", headers=ingress).text
+        for text in (
+            'href="/api/hassio_ingress/tok/mercado" class="on"',
+            "actualmente <b>bajista</b>",
+            "Miedo extremo",
+            "Datos históricos",
+            "1 día registrado",
+            "El gráfico aparece con dos días",
+            "Capitalización total",
+            "2,10 B $",
+            "Dominancia de BTC",
+            "21.218",
+        ):
+            assert text in page, text
+        svc.cache.put("global:history", history({0: 22, 1: 21, 2: 20}))
+        assert "lleva 3 días seguidos en miedo extremo" in client.get("/mercado").text
+        assert 'href="/" class="on"' in client.get("/").text
+        r = client.post("/mercado/actualizar", headers=ingress, follow_redirects=False)
+        assert r.headers["location"] == "/api/hassio_ingress/tok/mercado"

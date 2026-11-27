@@ -1,5 +1,5 @@
 name: Análisis fundamental
-version: "0.2.0"
+version: "0.3.0"
 slug: crypto_fundamentals
 description: Pares cripto/USDC de OKX con su cambio y volumen en 4 h, y un análisis fundamental de cada moneda (tokenomics, adopción, finanzas, desarrollo y riesgos).
 url: https://github.com/jmanera/ha-trading-helper

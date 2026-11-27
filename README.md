@@ -64,8 +64,9 @@ por activo y notas propias en cada operación. Guarda el histórico en MariaDB.
 Todos los pares cripto/USDC de OKX con su cambio y volumen de las últimas 4 horas y, en cada
 uno, un **análisis fundamental**: puntuación de 0 a 100, tokenomics, adopción, finanzas,
 desarrollo, riesgo de dilución y de liquidez y perspectiva alcista, neutral o bajista, cada
-métrica explicada. Con datos públicos de OKX, CoinGecko, DefiLlama y GitHub
-([cómo puntúa](crypto_fundamentals/DOCS.md)).
+métrica explicada. Una pestaña **Mercado** muestra el índice de miedo y codicia de CoinGecko,
+su histórico y la capitalización y dominancia del mercado. Con datos públicos de OKX,
+CoinGecko, DefiLlama y GitHub ([cómo puntúa](crypto_fundamentals/DOCS.md)).
 
 ### ⌚ Y en la muñeca
 

@@ -1,7 +1,8 @@
 """Public sources of fundamental data, all read-only.
 
-- CoinGecko (``/coins/markets``, ``/coins/{id}``, ``/coins/{id}/market_chart``): market data
-  and supply. Works without a key; a free Demo key raises the limit to 30 calls a minute.
+- CoinGecko (``/coins/markets``, ``/coins/{id}``, ``/coins/{id}/market_chart``, ``/global``):
+  market data and supply, and the whole market with the Fear & Greed Index. Works without a
+  key; a free Demo key raises the limit to 30 calls a minute.
   Since 28/08/2026 the Demo plan no longer returns ``developer_data``.
 - DefiLlama (no key): TVL of protocols and chains, fees and revenue.
 - GitHub: activity of the project's repositories. 60 calls an hour per IP without a token,
@@ -151,6 +152,10 @@ class CoinGecko(JsonApi):
             {"vs_currency": "usd", "days": str(days), "interval": "daily"},
         )
         return data
+
+    async def global_data(self) -> dict[str, Any]:
+        """Size and dominance of the whole market, with the current Fear & Greed Index."""
+        return dict(await self.get("/global") or {})
 
 
 class DefiLlama(JsonApi):

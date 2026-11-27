@@ -17,7 +17,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 
 from ha_trading_helper import __version__
-from ha_trading_helper.fundamentals import fmt
+from ha_trading_helper.fundamentals import fmt, sentiment
 from ha_trading_helper.fundamentals.market import Pair
 from ha_trading_helper.fundamentals.scoring import CATEGORY_LABELS
 from ha_trading_helper.fundamentals.service import (
@@ -96,6 +96,7 @@ def create_app(service: FundamentalsService, *, timezone: str = "Europe/Madrid")
         score_tone=score_tone,
         risk_tone=risk_tone,
         outlook_tone=outlook_tone,
+        fng_label=sentiment.label,
         when=when,
     )
 
@@ -109,6 +110,7 @@ def create_app(service: FundamentalsService, *, timezone: str = "Europe/Madrid")
                 "version": __version__,
                 "updated": service.updated,
                 "error": service.error,
+                "page": "pares",
                 **ctx,
             },
         )
@@ -145,6 +147,28 @@ def create_app(service: FundamentalsService, *, timezone: str = "Europe/Madrid")
                 "github": bool(service.settings.github_token),
             },
         )
+
+    @app.get("/mercado", response_class=HTMLResponse)
+    async def market(request: Request) -> HTMLResponse:
+        g = await service.refresh_global()
+        history = service.history
+        rows = sentiment.readings(history)
+        return render(
+            request,
+            "market.html",
+            page="mercado",
+            g=g,
+            global_error=service.global_error,
+            gauge=sentiment.gauge(g.fng, g.sentiment) if g else "",
+            chart=sentiment.history_chart(rows),
+            summary=sentiment.summarize(history, service.today()),
+            mood=sentiment.mood(g.sentiment) if g else "",
+        )
+
+    @app.post("/mercado/actualizar")
+    async def refresh_market(request: Request) -> RedirectResponse:
+        await service.refresh_global(max_age=60)
+        return _redirect(request, "mercado")
 
     @app.get("/moneda/{symbol}", response_class=HTMLResponse)
     async def coin(request: Request, symbol: str) -> HTMLResponse:

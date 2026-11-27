@@ -45,6 +45,12 @@ Probamos las APIs el 27/11/2026:
    los análisis recientes. El límite real es la cuota mensual del plan Demo de CoinGecko
    (10.000 consultas, 2 por moneda): la app cuenta las consultas del mes y avisa antes de
    superarla.
+10. **Mercado y miedo y codicia** (0.3.0) desde `/global` de CoinGecko, gratis en el plan Demo.
+    Su histórico es de pago, así que la app guarda la última lectura de cada día y calcula ella
+    las comparaciones (ayer, semana, mes, rachas, máximo y mínimo) solo con lo que ha
+    registrado. No mezclamos el índice de alternative.me, que tiene histórico gratis: es otro
+    cálculo y los valores no coinciden. `/global` se lee como mucho cada 30 min al abrir la
+    página y cada 6 h desde el bucle.
 
 ## Consecuencias
 
